@@ -10,30 +10,28 @@
     <button id="submit-btn">Submit</button>
 
     <script>
-        // Array to store selected names
-        let selectedNames = [];
+        // Array to store selected emails
+        let selectedEmails = [];
 
-        // Function to toggle button color and add/remove name from array
-        function toggleButton(button) {
-            const name = button.textContent;
-
-            if (selectedNames.includes(name)) {
-                button.classList.remove('selected');
-                selectedNames = selectedNames.filter(item => item !== name);
-            } else {
+        // Function to toggle button color and add/remove email from array
+        function toggleButton(button, email) {
+            const index = selectedEmails.indexOf(email);
+            if (index === -1) {
                 button.classList.add('selected');
-                selectedNames.push(name);
+                selectedEmails.push(email);
+            } else {
+                button.classList.remove('selected');
+                selectedEmails.splice(index, 1);
             }
         }
 
         // Function to create buttons from array
-        function createButtons(array) {
-            console.log(array)
+        function createButtons(users) {
             const container = document.getElementById('buttons-container');
-            array['users'].forEach(item => {
+            users["users"].forEach(user => {
                 const button = document.createElement('button');
-                button.textContent = item.name;
-                button.addEventListener('click', () => toggleButton(button));
+                button.textContent = user.name;
+                button.addEventListener('click', () => toggleButton(button, user.email));
                 container.appendChild(button);
             });
         }
@@ -50,15 +48,15 @@
         .then(data => createButtons(data))
         .catch(error => console.error('Error:', error));
 
-        // Submit selected names back to server
+        // Submit selected emails back to server
         document.getElementById('submit-btn').addEventListener('click', () => {
-            const grp=document.getElementById("group-name").value;
+            const groupName = document.getElementById("group-name").value;
             fetch('/submitUsers', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ selectedNames ,grp})
+                body: JSON.stringify({ selectedEmails, groupName })
             })
             .then(response => response.json())
             .then(data => console.log(data))

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Room Buttons</title>
+</head>
+<body>
+    <div id="buttons-container"></div>
+
+    <script>
+        // Function to handle button click
+        function handleButtonClick(roomId) {
+            console.log('Room ID:', roomId);
+        }
+
+        // Function to create buttons from array
+        function createButtons(rooms) {
+            console.log(rooms)
+            const container = document.getElementById('buttons-container');
+            rooms.forEach(room => {
+                const button = document.createElement('button');
+                button.textContent = room.name;
+                button.addEventListener('click', () => handleButtonClick(room.roomid));
+                container.appendChild(button);
+            });
+        }
+
+        // Fetch list of rooms from server using POST method
+        fetch('/getRooms', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json({"message":"Nothing"}))
+        .then(data => createButtons(data.userRooms))
+        .catch(error => console.error('Error:', error));
+    </script>
+</body>
+</html>
