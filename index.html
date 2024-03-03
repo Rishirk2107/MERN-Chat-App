@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socket.IO Chat</title>
+</head>
+<body>
+  <input type="text" id="messageInput" placeholder="Type a message...">
+  <button onclick="sendMessage()">Send</button>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    function sendMessage() {
+      const message = document.getElementById('messageInput').value;
+      const room = 'room1'; // Change the room name as needed
+      socket.emit('sendMessage', room, message);
+    }
+
+    socket.on('message', (message) => {
+      console.log('Received message:', message);
+      // Display the message in the UI
+    });
+
+    socket.emit('joinRoom', 'room1'); // Change the room name as needed
+  </script>
+</body>
+</html>

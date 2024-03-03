@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clickable Buttons</title>
+    <link rel="stylesheet" type="text/css" href="/style/styles.css">
+</head>
+<body>
+    <input type="text" id="group-name">
+    <div id="buttons-container"></div>
+    <button id="submit-btn">Submit</button>
+
+    <script>
+        // Array to store selected names
+        let selectedNames = [];
+
+        // Function to toggle button color and add/remove name from array
+        function toggleButton(button) {
+            const name = button.textContent;
+
+            if (selectedNames.includes(name)) {
+                button.classList.remove('selected');
+                selectedNames = selectedNames.filter(item => item !== name);
+            } else {
+                button.classList.add('selected');
+                selectedNames.push(name);
+            }
+        }
+
+        // Function to create buttons from array
+        function createButtons(array) {
+            console.log(array)
+            const container = document.getElementById('buttons-container');
+            array['users'].forEach(item => {
+                const button = document.createElement('button');
+                button.textContent = item.name;
+                button.addEventListener('click', () => toggleButton(button));
+                container.appendChild(button);
+            });
+        }
+
+        // Fetch array from server using POST method
+        fetch('/addUsers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => createButtons(data))
+        .catch(error => console.error('Error:', error));
+
+        // Submit selected names back to server
+        document.getElementById('submit-btn').addEventListener('click', () => {
+            const grp=document.getElementById("group-name").value;
+            fetch('/submitUsers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ selectedNames ,grp})
+            })
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
