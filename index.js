@@ -162,10 +162,10 @@ io.on('connection', (socket) => {
   });
 
 
-  socket.on('joinRoom', (room) => {
-    socket.join(room);
-    console.log(`User joined room ${room}`);
-  });
+  // socket.on('joinRoom', (room) => {
+  //   socket.join(room);
+  //   console.log(`User joined room ${room}`);
+  // });
 
   socket.on('sendMessage', (room, message) => {
     io.to(room).emit('message', message);
