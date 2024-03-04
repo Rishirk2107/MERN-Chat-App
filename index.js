@@ -4,7 +4,7 @@ const socketIo = require('socket.io');
 const bodyParser=require("body-parser");
 var session = require('express-session');
 const dotenv=require("dotenv");
-const {User,Room}=require("./backend/model/dbmodel");
+const {User,Room,Message}=require("./backend/model/dbmodel");
 const {generateRandomString}=require("./backend/controller/generator")
 
 
@@ -21,13 +21,11 @@ dotenv.config();
 
 var admin={email:"rishi@gmail.com",password:"12345"}
 
-const userIds = {};
-
-
 // Serve HTML file
-app.get('/', (req, res) => {
-    console.log(req.session.email)
-  res.sendFile(__dirname + '/index.html');
+app.get('/group/room/:roomId', (req, res) => {
+    console.log(req.session.email);
+    console.log(req.params.roomId)
+  res.sendFile(__dirname + '/front-end/templates/index.html');
 });
 
 app.get('/user/signup', (req, res) => {
@@ -148,6 +146,15 @@ app.post("/getRooms",async(req,res)=>{
 })
 
 
+app.post("/senddata",async(req,res)=>{
+  const user=req.session.email;
+  console.log(req.body.roomid);
+  const messages=await Message.find({"room":req.body.roomid},{_id:0,"message":1,user:1}).sort({createdAt:-1});
+  console.log(messages);
+  res.json({user:user,messages:messages})
+})
+
+
 // Socket.IO logic
 io.on('connection', (socket) => {
   console.log('A user connected',socket.id);
@@ -162,13 +169,28 @@ io.on('connection', (socket) => {
   });
 
 
-  // socket.on('joinRoom', (room) => {
-  //   socket.join(room);
-  //   console.log(`User joined room ${room}`);
-  // });
+  socket.on('joinRoom', async(room,user) => {
+    try{
+   const result=await Room.findOne({"roomid":room,"users":{$elemMatch:{$eq:user}}});
+   console.log(result);
+   if (result){
+   socket.join(room);
+   console.log(`User joined room ${room}`);
+   }
+   else{
+    console.log("Unauthorised Access");
+   }
+  }
+  catch(error){
+    console.log("Error at joining room",error);
+  }
+  });
 
-  socket.on('sendMessage', (room, message) => {
-    io.to(room).emit('message', message);
+  socket.on('sendMessage', async(room, message,user) => {
+    const mes=new Message({user:user,message:message,room:room})
+    const newmes=await mes.save()
+    console.log(newmes)
+    io.to(room).emit('message', message,user);
   });
 
   socket.on('disconnect', () => {
