@@ -43,6 +43,10 @@ const roomSchema=new mongoose.Schema({
     users:{
         type:[String],
         default:[]
+    },
+    admin:{
+        type:String,
+        required:true
     }
 })
 

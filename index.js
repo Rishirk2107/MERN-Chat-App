@@ -28,6 +28,10 @@ app.get('/group/room/:roomId', (req, res) => {
   res.sendFile(__dirname + '/front-end/templates/index.html');
 });
 
+app.get("/group/route",(req,res)=>{
+  res.sendFile(__dirname+"/front-end/templates/grouproute.html");
+})
+
 app.get('/user/signup', (req, res) => {
     res.sendFile(__dirname + '/front-end/templates/signup.html');
   });
@@ -40,11 +44,11 @@ app.get('/user/signup', (req, res) => {
     res.sendFile(__dirname + '/front-end/templates/login-admin.html');
   });
 
-  app.get('/route', (req, res) => {
+  app.get('/', (req, res) => {
     res.sendFile(__dirname + '/front-end/templates/route.html');
   });
 
-  app.get('/group', (req, res) => {
+  app.get('/group/settings', (req, res) => {
     res.sendFile(__dirname + '/front-end/templates/creategrp.html');
   });
 
@@ -73,7 +77,7 @@ app.get('/user/signup', (req, res) => {
     const user=await User.findOne({email:email,password:password})
     if(user){
       req.session.email=email;
-      res.redirect("/group/list");
+      res.redirect("/group/route");
     }
     else{
       res.json({"Message":"User not Registered"});
@@ -84,13 +88,6 @@ app.get('/user/signup', (req, res) => {
     }
   });
 
-
-  app.post("/admin/login",(req,res)=>{
-    const {email,password}=req.body;
-    if(email==admin["email"]){
-        res.redirect("/group")
-    }
-  })
 
   app.post("/addUsers",async(req,res)=>{
     const users=await User.find({},{"_id":0,"email":1,"name":1})
@@ -103,8 +100,9 @@ app.get('/user/signup', (req, res) => {
         const body = req.body;
         const users = body.selectedEmails;
         const name = body.groupName;
+        const admin=req.session.email;
         const roomid = generateRandomString();
-        const newRoom = new Room({ name: name, roomid: roomid, users: users });
+        const newRoom = new Room({ name: name, roomid: roomid, users: users, admin:admin });
         const savedRoom = await newRoom.save();
 
         for (const user of savedRoom.users) {
@@ -127,17 +125,17 @@ app.post("/getRooms",async(req,res)=>{
     },
     {
       $lookup: {
-          from: "rooms", // Collection to join
-          localField: "rooms", // Field from the users collection
-          foreignField: "roomid", // Field from the rooms collection
-          as: "userRooms" // Output array field
+          from: "rooms", 
+          localField: "rooms", 
+          foreignField: "roomid", 
+          as: "userRooms"
       }
   },
   {
       $project: {
           _id: 0,
-          "userRooms.name": 1, // Include room names in the output
-          "userRooms.roomid": 1 // Include room IDs in the output
+          "userRooms.name": 1, 
+          "userRooms.roomid": 1 
       }
   }
   ])
