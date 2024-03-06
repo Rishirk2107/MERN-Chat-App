@@ -55,6 +55,9 @@ app.get('/user/signup', (req, res) => {
   app.get('/group/list', (req, res) => {
     res.sendFile(__dirname + '/front-end/templates/rooms.html');
   });
+  app.get("/group/delete",(req,res)=>{
+    res.sendFile(__dirname + '/front-end/templates/deletegrp.html');
+  })
 
 
   app.post("/user/signup",async (req,res)=>{
@@ -104,6 +107,7 @@ app.get('/user/signup', (req, res) => {
         const roomid = generateRandomString();
         const newRoom = new Room({ name: name, roomid: roomid, users: users, admin:admin });
         const savedRoom = await newRoom.save();
+        console.log(savedRoom)
 
         for (const user of savedRoom.users) {
             const updatedUser = await User.findOneAndUpdate({ email: user }, { $push: { rooms: roomid } });
@@ -111,6 +115,7 @@ app.get('/user/signup', (req, res) => {
         }
 
         console.log(savedRoom.users);
+        res.json({"Message":true});
     } catch (error) {
         console.log("Error at creating Room", error);
     }
@@ -147,11 +152,34 @@ app.post("/getRooms",async(req,res)=>{
 app.post("/senddata",async(req,res)=>{
   const user=req.session.email;
   console.log(req.body.roomid);
-  const messages=await Message.find({"room":req.body.roomid},{_id:0,"message":1,user:1}).sort({createdAt:-1});
-  console.log(messages);
+  const messages=await Message.find({"room":req.body.roomid},{_id:0,"message":1,user:1}).sort({createdAt:1});
+  const username=await User.findOne({"email":user},{"_id":0,"name":1})
+  console.log(username);
   res.json({user:user,messages:messages})
 })
 
+
+app.post("/group/showgroups",async(req,res)=>{
+  const email=req.session.email;
+  const rooms=await Room.find({admin:email},{_id:0,__v:0,users:0});
+  res.json({rooms:rooms})
+})
+
+app.post("/group/delete",async(req,res)=>{
+  try{
+  console.log(req.body.selectedRooms);
+  for (const element of req.body.selectedRooms) {
+    await Room.deleteOne({ roomid: element });
+    console.log(element);
+    const deleted=await Message.deleteMany({room:element});
+    //console.log(deleted)
+  res.json({"Message":true});
+  }
+}
+catch(error){
+  console.log("Error at deleting rooms",error);
+}
+})
 
 // Socket.IO logic
 io.on('connection', (socket) => {
