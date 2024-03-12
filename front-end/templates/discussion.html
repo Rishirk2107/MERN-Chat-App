@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    .text-message {
+      position: relative;
+      background-color: #f1f0f0;
+      border-radius: 5px;
+      padding: 10px;
+      margin-bottom: 5px;
+  }
+
+  .user{
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 5px;
+  }
+
+  /* Styles for system messages */
+  .system-message {
+    position: relative;
+      font-style: italic;
+      color: gray;
+      padding: 5px;
+      margin-bottom: 5px;
+  }
+  </style>
+  <title>Socket.IO Chat</title>
+</head>
+<body onload="getdata()">
+    <label>Title:</label>
+    <div id="title"></div>
+    <label>Detail:</label>
+    <div id="detail"></div>
+  <div id="chat"></div>
+  <input type="text" id="messageInput" placeholder="Type a message...">
+  <button onclick="sendMessage()">Send</button>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+
+    const socket = io();
+    let user;
+    let roomid;
+
+
+    function createMessageNode(message,user,userr) {
+      const node = document.createElement('div');
+      if (user == userr) {
+          node.className = 'text-message';
+      } else {
+          node.className = 'system-message';
+      }
+      node.textContent = message;
+
+      const innerDiv = document.createElement('div');
+      innerDiv.className="user"
+    innerDiv.textContent = userr
+    node.appendChild(innerDiv);
+
+      const chatElement = document.getElementById('chat');
+      chatElement.appendChild(node);
+      //return node;
+  }
+
+
+    async function postData(url = '', data = {}) {
+      const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+      });
+      return response.json(); 
+  }
+
+  async function getdata(){
+    const currentUrl = window.location.href;
+    const id = currentUrl.split('/').pop();
+    roomid=id;
+    const result=await postData("/discussion/display/topic",{topicId:id})
+    console.log(result);
+    document.getElementById("title").innerHTML=result.topic.topic.title;
+    document.getElementById("detail").innerHTML=result.topic.topic.details;
+    socket.emit('joinRoom', roomid,user); 
+  }
+
+    function sendMessage() {
+      const message = document.getElementById('messageInput').value;
+      console.log(roomid)
+      socket.emit('sendMessage', roomid, message,user);
+    }
+
+    socket.on('message', (message,userr) => {
+      console.log('Received message:', message,userr);
+      
+    createMessageNode(message,user,userr)
+    document.getElementById("messageInput").value="";
+    });
+
+    // Change the room name as needed
+  </script>
+</body>
+</html>

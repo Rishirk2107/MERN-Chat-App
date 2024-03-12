@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clickable Buttons</title>
+    <link rel="stylesheet" type="text/css" href="/style/styles.css">
+</head>
+<body>
+    <div id="buttons-container"></div>
+    <button id="submit-btn">Submit</button>
+
+    <script>
+        // Array to store selected emails
+        let selectedRooms = [];
+
+        // Function to toggle button color and add/remove email from array
+        function toggleButton(button, email) {
+            const index = selectedRooms.indexOf(email);
+            if (index === -1) {
+                button.classList.add('selected');
+                selectedRooms.push(email);
+            } else {
+                button.classList.remove('selected');
+                selectedRooms.splice(index, 1);
+            }
+        }
+
+        // Function to create buttons from array
+        function createButtons(rooms) {
+            console.log(rooms);
+            const container = document.getElementById('buttons-container');
+            rooms["rooms"].forEach(user => {
+                const button = document.createElement('button');
+                button.textContent = user.name;
+                button.addEventListener('click', () => toggleButton(button, user.roomid));
+                container.appendChild(button);
+            });
+        }
+
+        // Fetch array from server using POST method
+        fetch('/group/showgroups', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => createButtons(data))
+        .catch(error => console.error('Error:', error));
+
+        // Submit selected emails back to server
+        document.getElementById('submit-btn').addEventListener('click', () => {
+            fetch('/group/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ selectedRooms })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+                if(data.Message==true){
+                    alert("Deleted Successfully")
+                    window.location.href="/group/route"
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>

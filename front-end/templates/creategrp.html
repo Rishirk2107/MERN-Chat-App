@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Group</title>
+    <link rel="stylesheet" type="text/css" href="/style/styles.css">
+</head>
+<body>
+    <input type="text" id="group-name">
+    <div id="buttons-container"></div>
+    <button id="submit-btn">Submit</button>
+
+    <script>
+        // Array to store selected emails
+        let selectedEmails = [];
+
+        // Function to toggle button color and add/remove email from array
+        function toggleButton(button, email) {
+            const index = selectedEmails.indexOf(email);
+            if (index === -1) {
+                button.classList.add('selected');
+                selectedEmails.push(email);
+            } else {
+                button.classList.remove('selected');
+                selectedEmails.splice(index, 1);
+            }
+        }
+
+        // Function to create buttons from array
+        function createButtons(users) {
+            const container = document.getElementById('buttons-container');
+            users["users"].forEach(user => {
+                const button = document.createElement('button');
+                button.textContent = user.name;
+                button.addEventListener('click', () => toggleButton(button, user.email));
+                container.appendChild(button);
+            });
+            
+        }
+
+        // Fetch array from server using POST method
+        fetch('/addUsers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => createButtons(data))
+        .catch(error => console.error('Error:', error));
+
+        // Submit selected emails back to server
+        document.getElementById('submit-btn').addEventListener('click', () => {
+            const groupName = document.getElementById("group-name").value;
+            fetch('/submitUsers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ selectedEmails, groupName })
+            })
+            .then(response => response.json())
+            .then(data =>{
+                console.log(data);
+                alert("Group created successfully")
+                if (data.Message==true){
+                    window.location.href="/group/route"
+                }
+            } )
+
+            .then(data => {
+                console.log(data)
+                if(data.redirect==true){
+                    window.location.href="/group/route"
+                }
+            })
+
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Group</title>
+    <link rel="stylesheet" type="text/css" href="/style/anonymouscreate.css">
+</head>
+<body>
+    <label>Title of your question</label>
+    <input type="text" class="discussion-title" id="discussion-title"/><br>
+    <label>Details of your question</label>
+    <textarea class="discussion-name" id="discussion-name"></textarea><br>
+    <button id="submit-btn">Post</button>
+
+    <script>
+
+        document.getElementById('submit-btn').addEventListener('click', () => {
+            const discussionTitle=document.getElementById("discussion-title").value;
+            const discussionName = document.getElementById("discussion-name").value;
+            console.log(discussionName);
+            fetch('/create/discussion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({topic:{ title:discussionTitle,details:discussionName }})
+            })
+            .then(response => response.json())
+            .then(data =>{
+                console.log(data);
+                if (data.Message==true){
+                    alert("Discussion created successfully")
+                    window.location.href="/anonymous/discussion/"+data.topicId;
+                }
+            } )
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
