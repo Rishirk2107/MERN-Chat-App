@@ -4,11 +4,19 @@ const socketIo = require('socket.io');
 const bodyParser=require("body-parser");
 var session = require('express-session');
 const dotenv=require("dotenv");
+const cors=require('cors')
 const {User,Room,Message,Anonymouschat,Anonymousrooms}=require("./backend/model/dbmodel");
 const {generateRandomString}=require("./backend/controller/generator")
 
 
 const app = express();
+app.use(cors(
+  {
+    origin:"https://mern-chat-app-nine-plum.vercel.app",
+    methods:['GET','POST'],
+    credentials:true
+  }
+))
 const server = http.createServer(app);
 const io = socketIo(server);
 
