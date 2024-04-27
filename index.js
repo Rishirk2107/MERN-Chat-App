@@ -10,13 +10,7 @@ const {generateRandomString}=require("./backend/controller/generator")
 
 
 const app = express();
-app.use(cors(
-  {
-    origin:"https://mern-chat-app-nine-plum.vercel.app",
-    methods:['GET','POST'],
-    credentials:true
-  }
-))
+app.use(cors())
 const server = http.createServer(app);
 const io = socketIo(server);
 
