@@ -1,15 +1,14 @@
 {
-  "name": "room",
+  "name": "room-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "backend/index.js",
+  "description": "Backend for MERN Chat App",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "devtest": "nodemon backend/index.js",
-    "start": "node backend/index.js",
-    "build": "node backend/index.js"
-  }
-  ,"keywords": [],
+    "devtest": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
