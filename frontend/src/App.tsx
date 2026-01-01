@@ -14,6 +14,8 @@ import AnonymousCreatePage from './pages/AnonymousCreatePage';
 import AnonymousDiscussionPage from './pages/AnonymousDiscussionPage';
 import LoginAdminPage from './pages/LoginAdminPage';
 import CreatorDiscussionPage from './pages/CreatorDiscussionPage';
+import FriendsPage from './pages/FriendsPage';
+import PrivateChatPage from './pages/PrivateChatPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 const App: React.FC = () => {
@@ -34,6 +36,8 @@ const App: React.FC = () => {
         <Route path="/anonymous-discussion" element={<AnonymousDiscussionPage />} />
         <Route path="/creator-discussion" element={<CreatorDiscussionPage />} />
         <Route path="/group/room/:roomId" element={<CreatorDiscussionPage />} />
+        <Route path="/friends" element={<FriendsPage />} />
+        <Route path="/friends/chat/:friendEmail" element={<PrivateChatPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
   );

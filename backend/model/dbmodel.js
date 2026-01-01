@@ -129,3 +129,15 @@ const Anonymouschat=mongoose.model("Anonymous-chat",Anonymouschatsschema)
 
 module.exports={User,Room,Message,Anonymousrooms,Anonymouschat};
 
+// Friend schema
+const friendSchema = new mongoose.Schema({
+    requester: { type: String, required: true }, // email of requester
+    recipient: { type: String, required: true }, // email of recipient
+    status: { type: String, enum: ['pending', 'accepted', 'blocked'], default: 'pending' },
+    createdAt: { type: Date, default: Date.now }
+});
+
+const Friend = mongoose.model('Friend', friendSchema);
+
+module.exports.Friend = Friend;
+

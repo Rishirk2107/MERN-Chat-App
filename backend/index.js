@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
-const { User, Room, Message, Anonymousrooms, Anonymouschat } = require('./model/dbmodel');
+const { User, Room, Message, Anonymousrooms, Anonymouschat, Friend } = require('./model/dbmodel');
 const { generateRandomString } = require('./controller/generator');
 
 const app = express();
@@ -372,6 +372,86 @@ app.post('/create/discussion', async (req, res) => {
   }
 });
 
+// Friend system
+// Search users by name (exclude requester)
+app.post('/friends/search', async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    if (!name) return res.status(400).json({ Message: false, error: 'Name required' });
+    const regex = new RegExp(name, 'i');
+    const users = await User.find({ name: regex, email: { $ne: email } }, { _id: 1, name: 1, email: 1 });
+    res.json({ users });
+  } catch (error) {
+    console.log('Error at friends.search', error);
+    res.status(500).json({ Message: false });
+  }
+});
+
+// Send friend request
+app.post('/friends/request', async (req, res) => {
+  try {
+    const { email, targetEmail } = req.body; // email = requester
+    if (!email || !targetEmail) return res.status(400).json({ Message: false, error: 'Missing params' });
+
+    // prevent self-request
+    if (email === targetEmail) return res.status(400).json({ Message: false, error: 'Cannot friend yourself' });
+
+    // check existing relation
+    const existing = await Friend.findOne({ $or: [
+      { requester: email, recipient: targetEmail },
+      { requester: targetEmail, recipient: email }
+    ]});
+    if (existing) return res.json({ Message: false, error: 'Request already exists or you are already friends' });
+
+    const fr = new Friend({ requester: email, recipient: targetEmail, status: 'pending' });
+    await fr.save();
+    res.json({ Message: true });
+  } catch (error) {
+    console.log('Error at friends.request', error);
+    res.status(500).json({ Message: false });
+  }
+});
+
+// Get incoming friend requests
+app.post('/friends/incoming', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ Message: false });
+    const requests = await Friend.find({ recipient: email, status: 'pending' }, { _id: 1, requester: 1, createdAt: 1 });
+    res.json({ requests });
+  } catch (error) {
+    console.log('Error at friends.incoming', error);
+    res.status(500).json({ Message: false });
+  }
+});
+
+// Accept friend request
+app.post('/friends/accept', async (req, res) => {
+  try {
+    const { email, requester } = req.body; // email is recipient
+    if (!email || !requester) return res.status(400).json({ Message: false });
+    const updated = await Friend.findOneAndUpdate({ requester: requester, recipient: email, status: 'pending' }, { status: 'accepted' }, { new: true });
+    if (!updated) return res.status(404).json({ Message: false, error: 'Request not found' });
+    res.json({ Message: true });
+  } catch (error) {
+    console.log('Error at friends.accept', error);
+    res.status(500).json({ Message: false });
+  }
+});
+
+// List friends
+app.post('/friends/list', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ Message: false });
+    const friends = await Friend.find({ $or: [ { requester: email }, { recipient: email } ], status: 'accepted' });
+    res.json({ friends });
+  } catch (error) {
+    console.log('Error at friends.list', error);
+    res.status(500).json({ Message: false });
+  }
+});
+
 app.post('/discussion/display/topic', async (req, res) => {
   try {
     console.log(req.body);
@@ -399,9 +479,37 @@ io.on('connection', (socket) => {
           console.log('Unauthorised Access for', user, 'in room', room);
         }
       } else {
-        // Allow joining for rooms not in DB (e.g., anonymous)
-        socket.join(room);
-        console.log(`User ${user} joined room ${room} (no auth check)`);
+        // For direct messages (dm:emailA|emailB) ensure friendship
+        if (room.startsWith('dm:')) {
+          const parts = room.replace('dm:', '').split('|');
+          if (parts.length === 2) {
+            const [a, b] = parts;
+            // allow if user matches one of the participants and they are friends
+            if (user === a || user === b) {
+              const friend = await Friend.findOne({
+                $or: [
+                  { requester: a, recipient: b },
+                  { requester: b, recipient: a }
+                ],
+                status: 'accepted'
+              });
+              if (friend) {
+                socket.join(room);
+                console.log(`User ${user} joined DM room ${room}`);
+              } else {
+                console.log('DM join denied - not friends', a, b);
+              }
+            } else {
+              console.log('DM join denied - user not part of DM', user, room);
+            }
+          } else {
+            console.log('Invalid DM room format', room);
+          }
+        } else {
+          // Allow joining for rooms not in DB (e.g., anonymous)
+          socket.join(room);
+          console.log(`User ${user} joined room ${room} (no auth check)`);
+        }
       }
     } catch (error) {
       console.log('Error at joining room', error);
