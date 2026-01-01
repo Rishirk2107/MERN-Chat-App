@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../utils/api';
+import toast from 'react-hot-toast';
 
 interface Group {
   name: string;
@@ -18,6 +19,9 @@ const RemoveUsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const navigate = useNavigate();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const modalGroup = params.get('group');
 
   useEffect(() => {
     const email = localStorage.getItem('email');
@@ -28,13 +32,18 @@ const RemoveUsersPage: React.FC = () => {
     const fetchGroups = async () => {
       try {
         const response = await api.post('/admin/getrooms', { email });
-        setGroups(response.data.rooms);
+        // only include admin groups for remove-users flow
+        const list = (response.data.rooms || []).filter((r: any) => r.admin === email);
+        setGroups(list);
+        // preselect group from query param if provided
+        const q = modalGroup;
+        if (q) setSelectedGroup(q);
       } catch (error) {
         console.error('Error fetching groups:', error);
       }
     };
     fetchGroups();
-  }, [navigate]);
+  }, [navigate, modalGroup]);
 
   useEffect(() => {
     if (selectedGroup) {
@@ -62,18 +71,61 @@ const RemoveUsersPage: React.FC = () => {
     e.preventDefault();
     const email = localStorage.getItem('email');
     if (!email) {
-      alert('Please login first');
+      toast.error('Please login first');
       return;
     }
     try {
       await api.post('/remove-users', { userIds: selectedUsers, groupId: selectedGroup, email });
-      alert('Users removed successfully');
-      navigate('/group-route');
+      toast.success('Users removed successfully');
+      // if opened as modal, go back, otherwise navigate to group route
+      if (modalGroup) navigate(-1);
+      else navigate('/group-route');
     } catch (error) {
       console.error('Error removing users:', error);
-      alert('Error removing users');
+      toast.error('Error removing users');
     }
   };
+
+  // if opened with ?group=..., render as modal
+  if (modalGroup) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black/60" onClick={() => navigate(-1)} />
+        <div className="bg-slate-800 text-slate-100 rounded-lg shadow-lg w-full max-w-xl z-50 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Remove Users</h3>
+            <button onClick={() => navigate(-1)} className="text-slate-300 hover:text-slate-100">✕</button>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} required className="w-full p-2 bg-slate-700 border border-slate-600 rounded text-slate-100">
+              <option value="">Select Group</option>
+              {groups.map(group => (
+                <option key={group.roomid} value={group.roomid}>{group.name}</option>
+              ))}
+            </select>
+            <h3 className="text-sm">Select Users to Remove:</h3>
+            <div className="grid gap-2 max-h-56 overflow-auto">
+              {users.map(user => (
+                <label key={user.email} className="flex items-center gap-2 p-2 bg-slate-800 rounded border border-slate-700">
+                  <input
+                    type="checkbox"
+                    value={user.email}
+                    onChange={(e) => handleUserChange(user.email, e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <div>{user.name}</div>
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <button type="button" onClick={() => navigate(-1)} className="px-3 py-1 border border-slate-600 rounded mr-2">Cancel</button>
+              <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Remove Selected Users</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
       <div className="page">

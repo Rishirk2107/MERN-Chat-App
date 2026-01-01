@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import toast from 'react-hot-toast';
 
 const AnonymousRedirectPage: React.FC = () => {
   const [roomName, setRoomName] = useState('');
@@ -13,7 +14,7 @@ const AnonymousRedirectPage: React.FC = () => {
       navigate(`/anonymous-discussion?room=${encodeURIComponent(roomName)}`);
     } catch (error) {
       console.error('Error:', error);
-      alert('Error joining room');
+      toast.error('Error joining room');
     }
   };
 

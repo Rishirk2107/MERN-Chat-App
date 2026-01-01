@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import toast from 'react-hot-toast';
 
 const AnonymousCreatePage: React.FC = () => {
   const [title, setTitle] = useState('');
@@ -11,7 +12,7 @@ const AnonymousCreatePage: React.FC = () => {
     e.preventDefault();
     const email = localStorage.getItem('email');
     if (!email) {
-      alert('Please login first');
+      toast.error('Please login first');
       return;
     }
     try {
@@ -19,11 +20,11 @@ const AnonymousCreatePage: React.FC = () => {
       if (response.data.Message) {
         navigate(`/anonymous-discussion?room=${response.data.topicId}`);
       } else {
-        alert('Error creating discussion');
+        toast.error('Error creating discussion');
       }
     } catch (error) {
       console.error('Error creating discussion:', error);
-      alert('Error creating discussion');
+      toast.error('Error creating discussion');
     }
   };
 

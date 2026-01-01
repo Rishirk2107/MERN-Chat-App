@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import toast from 'react-hot-toast';
 
 interface Room {
   name: string;
@@ -41,12 +42,12 @@ const DeleteGroupPage: React.FC = () => {
     try {
       const response = await api.post('/group/delete', { selectedRooms });
       if (response.data.Message === true) {
-        alert('Deleted Successfully');
+        toast.success('Deleted Successfully');
         navigate('/group-route');
       }
     } catch (error) {
       console.error('Error deleting groups:', error);
-      alert('Error deleting groups');
+      toast.error('Error deleting groups');
     }
   };
 

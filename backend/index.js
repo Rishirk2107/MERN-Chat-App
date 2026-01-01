@@ -270,7 +270,8 @@ app.post('/group/delete', async (req, res) => {
 app.post('/admin/getrooms', async (req, res) => {
   try {
     const { email } = req.body;
-    const rooms = await Room.find({ admin: email }, { _id: 0, roomid: 1, name: 1 });
+    // return rooms where user is admin or a member, and include admin field
+    const rooms = await Room.find({ $or: [{ admin: email }, { users: email }] }, { _id: 0, roomid: 1, name: 1, admin: 1 });
     console.log(rooms);
     res.json({ rooms: rooms });
   } catch (error) {

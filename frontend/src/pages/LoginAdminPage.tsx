@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import toast from 'react-hot-toast';
 
 const LoginAdminPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -18,7 +19,7 @@ const LoginAdminPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Login failed:', error);
-      alert('Login failed');
+      toast.error('Login failed');
     }
   };
 

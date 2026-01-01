@@ -13,6 +13,12 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Tailwind base */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
 a {
   font-weight: 500;
   color: #646cff;
@@ -26,6 +32,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #0f172a; /* slate-900 */
+  color: #cbd5e1; /* slate-200 */
 }
 
 h1 {

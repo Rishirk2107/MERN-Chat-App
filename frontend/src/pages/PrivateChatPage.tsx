@@ -51,27 +51,26 @@ const PrivateChatPage: React.FC = () => {
   };
 
   return (
-    <div className="page">
-      <h1>Chat with {friend}</h1>
-      <div className="messages">
+    <div className="flex flex-col h-full">
+      <div className="messages h-[70vh] overflow-auto mb-4 space-y-3">
         {messages.map((msg, i) => {
           const parts = msg.split(': ');
           const author = parts.shift() || '';
           const text = parts.join(': ');
           const isMe = author === myName;
           return (
-            <div key={i} className={`message-row ${isMe ? 'me' : ''}`}>
-              <div className={`bubble ${isMe ? 'me' : 'them'}`}>
-                {text}
-                <div className="msg-meta">{author}</div>
+            <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+              <div className={`${isMe ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-100'} max-w-[70%] p-3 rounded-lg` }>
+                <div>{text}</div>
+                <div className="text-xs text-slate-300 mt-2 text-right">{author}</div>
               </div>
             </div>
           );
         })}
       </div>
-      <div className="composer">
-        <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} placeholder="Type a message" />
-        <button onClick={sendMessage}>Send</button>
+      <div className="composer flex gap-2">
+        <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} placeholder="Type a message" className="flex-1 p-2 border rounded" />
+        <button onClick={sendMessage} className="px-4 py-2 bg-blue-600 text-white rounded">Send</button>
       </div>
     </div>
   );

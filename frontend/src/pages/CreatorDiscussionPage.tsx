@@ -48,33 +48,33 @@ const CreatorDiscussionPage: React.FC = () => {
   };
 
   return (
-    <div className="page">
-      <h1>Creator Discussion: {room}</h1>
-      <div className="messages">
+    <div className="flex flex-col h-full">
+      <div className="messages h-[70vh] overflow-auto mb-4 space-y-3">
         {messages.map((msg, index) => {
           const parts = msg.split(': ');
           const author = parts.shift() || '';
           const text = parts.join(': ');
           const me = author === localStorage.getItem('name');
           return (
-            <div key={index} className={`message-row ${me ? 'me' : ''}`}>
-              <div className={`bubble ${me ? 'me' : 'them'}`}>
-                {text}
-                <div className="msg-meta">{author}</div>
+            <div key={index} className={`flex ${me ? 'justify-end' : 'justify-start'}`}>
+              <div className={`${me ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-100'} max-w-[70%] p-3 rounded-lg`}>
+                <div>{text}</div>
+                <div className="text-xs text-slate-300 mt-2 text-right">{author}</div>
               </div>
             </div>
           );
         })}
       </div>
-      <div className="message-input">
+      <div className="flex gap-2">
         <input
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
           placeholder="Type a message"
+          className="flex-1 p-2 border rounded"
         />
-        <button onClick={sendMessage}>Send</button>
+        <button onClick={sendMessage} className="px-4 py-2 bg-blue-600 text-white rounded">Send</button>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
+import MainLayout from './components/MainLayout';
 import GroupRoutePage from './pages/GroupRoutePage';
 import HomePage from './pages/HomePage';
 import CreateGroupPage from './pages/CreateGroupPage';
@@ -27,6 +28,11 @@ const App: React.FC = () => {
         <Route path="/login-admin" element={<LoginAdminPage />} />
         <Route path="/rooms" element={<RoomsPage />} />
         <Route path="/group-route" element={<GroupRoutePage />} />
+        <Route path="/app/*" element={<MainLayout />}> 
+        <Route path="friends" element={<FriendsPage />} />
+        <Route path="friends/chat/:friendEmail" element={<PrivateChatPage />} />
+        <Route path="group/room/:roomId" element={<CreatorDiscussionPage />} />
+        </Route>
         <Route path="/create-group" element={<CreateGroupPage />} />
         <Route path="/delete-group" element={<DeleteGroupPage />} />
         <Route path="/add-user" element={<AddUserPage />} />
@@ -36,8 +42,6 @@ const App: React.FC = () => {
         <Route path="/anonymous-discussion" element={<AnonymousDiscussionPage />} />
         <Route path="/creator-discussion" element={<CreatorDiscussionPage />} />
         <Route path="/group/room/:roomId" element={<CreatorDiscussionPage />} />
-        <Route path="/friends" element={<FriendsPage />} />
-        <Route path="/friends/chat/:friendEmail" element={<PrivateChatPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import toast from 'react-hot-toast';
 
 interface User {
   email: string;
@@ -37,16 +38,16 @@ const CreateGroupPage: React.FC = () => {
     e.preventDefault();
     const email = localStorage.getItem('email');
     if (!email) {
-      alert('Please login first');
+      toast.error('Please login first');
       return;
     }
     try {
       await api.post('/submitUsers', { name: groupName, selectedEmails: selectedUsers, email });
-      alert('Group created successfully');
+      toast.success('Group created successfully');
       navigate('/rooms');
     } catch (error) {
       console.error('Error creating group:', error);
-      alert('Error creating group');
+      toast.error('Error creating group');
     }
   };
 
