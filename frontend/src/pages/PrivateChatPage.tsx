@@ -11,8 +11,10 @@ const PrivateChatPage: React.FC = () => {
   const [messages, setMessages] = useState<string[]>([]);
   const socketRef = useRef<Socket | null>(null);
 
-  const me = localStorage.getItem('email') || '';
-  const myName = localStorage.getItem('name') || '';
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const me = localStorage.getItem('userid') || (user ? String(user.userid) : '') || '';
+  const myName = (user ? (user.name || user.username) : '') || localStorage.getItem('name') || '';
 
   // deterministic room id for DM
   const roomId = React.useMemo(() => {
@@ -27,7 +29,7 @@ const PrivateChatPage: React.FC = () => {
     socketRef.current = io(import.meta.env.VITE_API_URL || 'http://localhost:3000');
     socketRef.current.emit('joinRoom', roomId, me);
 
-    api.post('/senddata', { roomid: roomId, email: me }).then(response => {
+    api.post('/senddata', { roomid: roomId, userid: me }).then(response => {
       const data = response.data;
       if (data.messages) {
         setMessages(data.messages.map((m: any) => `${m.user}: ${m.message}`));

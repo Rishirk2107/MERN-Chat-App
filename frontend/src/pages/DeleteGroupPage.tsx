@@ -14,14 +14,16 @@ const DeleteGroupPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const email = localStorage.getItem('email');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const email = user ? user.email : null;
     if (!email) {
       navigate('/login');
       return;
     }
     const fetchRooms = async () => {
       try {
-        const response = await api.post('/group/showgroups', { email });
+        const response = await api.post('/groups/admin', { email });
         setRooms(response.data.rooms || []);
       } catch (error) {
         console.error('Error fetching rooms:', error);
@@ -40,7 +42,7 @@ const DeleteGroupPage: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      const response = await api.post('/group/delete', { selectedRooms });
+      const response = await api.post('/groups/delete', { selectedRooms });
       if (response.data.Message === true) {
         toast.success('Deleted Successfully');
         navigate('/group-route');

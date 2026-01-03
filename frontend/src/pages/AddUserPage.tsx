@@ -18,16 +18,18 @@ const AddUserPage: React.FC = () => {
   const modalGroup = params.get('group');
 
   useEffect(() => {
-    const email = localStorage.getItem('email');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const email = user ? user.email : null;
     if (!email) {
       navigate('/login');
       return;
     }
     const fetchGroups = async () => {
       try {
-        const response = await api.post('/admin/getrooms', { email });
+        const response = await api.post('/admin/rooms', { email });
         // keep only groups where current user is admin for AddUser
-        const list = (response.data.rooms || []).filter((r: any) => r.admin === email);
+        const list = (response.data.rooms || []).filter((r: any) => r.admin === user.userid);
         setGroups(list);
         // if opened as modal with group param, preselect it
         if (modalGroup) setSelectedGroup(modalGroup);
@@ -40,13 +42,15 @@ const AddUserPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const email = localStorage.getItem('email');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const email = user ? user.email : null;
     if (!email) {
       toast.error('Please login first');
       return;
     }
     try {
-      await api.post('/add-user', { username, groupId: selectedGroup, email });
+      await api.post('/groups/add-member', { username, groupId: selectedGroup, email });
       toast.success('User added successfully');
       navigate('/group-route');
     } catch (error) {

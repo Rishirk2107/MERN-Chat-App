@@ -10,14 +10,14 @@ type Props = {
 
 const CreateGroupModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
   const [groupName, setGroupName] = useState('');
-  const [users, setUsers] = useState<{ email: string; name: string }[]>([]);
+  const [users, setUsers] = useState<{ userid: number; username: string; name: string }[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) return;
     const fetchUsers = async () => {
       try {
-        const res = await api.post('/addUsers');
+        const res = await api.post('/users/list');
         setUsers(res.data.users || []);
       } catch (err) {
         console.error('Error fetching users for modal', err);
@@ -33,10 +33,12 @@ const CreateGroupModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
 
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    const email = localStorage.getItem('email');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const email = user ? user.email : null;
     if (!email) return toast.error('Please login');
     try {
-      await api.post('/submitUsers', { name: groupName, selectedEmails: selected, email });
+      await api.post('/rooms/create', { name: groupName, selectedEmails: selected, email });
       toast.success('Group created');
       setGroupName('');
       setSelected([]);
@@ -60,11 +62,11 @@ const CreateGroupModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
 
           <div className="grid grid-cols-2 gap-2 max-h-56 overflow-auto">
             {users.map(u => (
-              <label key={u.email} className="flex items-center gap-2 p-2 bg-slate-800 rounded border border-slate-700">
-                <input type="checkbox" onChange={(e) => toggle(u.email, e.target.checked)} className="w-4 h-4" />
+              <label key={u.userid} className="flex items-center gap-2 p-2 bg-slate-800 rounded border border-slate-700">
+                <input type="checkbox" onChange={(e) => toggle(u.username, e.target.checked)} className="w-4 h-4" />
                 <div>
                   <div className="font-medium">{u.name}</div>
-                  <div className="text-xs text-slate-400">{u.email}</div>
+                  <div className="text-xs text-slate-400">{u.username}</div>
                 </div>
               </label>
             ))}

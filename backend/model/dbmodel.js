@@ -11,9 +11,18 @@ const UserSchema=new mongoose.Schema({
         type:String,
         required:true
     },
+    username:{
+        type:String,
+        required:true,
+        unique:true
+    },
     email:{
         type:String,
         required:true
+    },
+    userid:{
+        type:Number,
+        unique:true
     },
     password:{
         type:String,
@@ -29,6 +38,33 @@ const UserSchema=new mongoose.Schema({
     }
 })
 
+// Counter collection for auto-incrementing ids
+const counterSchema = new mongoose.Schema({
+    _id: { type: String, required: true },
+    seq: { type: Number, default: 0 }
+});
+
+const Counter = mongoose.model('Counter', counterSchema);
+
+// Pre-save hook to assign an auto-incrementing `userid`
+UserSchema.pre('save', async function(next) {
+    if (this.isNew) {
+        try {
+            const counter = await Counter.findOneAndUpdate(
+                { _id: 'userid' },
+                { $inc: { seq: 1 } },
+                { new: true, upsert: true }
+            );
+            this.userid = counter.seq;
+            next();
+        } catch (err) {
+            next(err);
+        }
+    } else {
+        next();
+    }
+});
+
 const User=mongoose.model("User",UserSchema);
 
 const roomSchema=new mongoose.Schema({
@@ -41,11 +77,11 @@ const roomSchema=new mongoose.Schema({
         required:true
     },
     users:{
-        type:[String],
+        type:[Number],
         default:[]
     },
     admin:{
-        type:String,
+        type:Number,
         required:true
     }
 })
@@ -53,6 +89,10 @@ const roomSchema=new mongoose.Schema({
 const Room=mongoose.model("Rooms",roomSchema);
 
 const messageSchema=new mongoose.Schema({
+    userId:{
+        type:Number,
+        required:true
+    },
     user:{
         type:String,
         required:true
@@ -90,7 +130,7 @@ const anonymousroomschema=new mongoose.Schema({
     },
 
     createdBy:{
-        type:String,
+        type:Number,
         required:true
     },
     createdAt:{
@@ -114,7 +154,11 @@ const Anonymouschatsschema=new mongoose.Schema({
         type:String,
         required:true
     },
-    email:{
+    userid:{
+        type:Number,
+        required:true
+    },
+    username:{
         type:String,
         required:true
     },
@@ -129,10 +173,20 @@ const Anonymouschat=mongoose.model("Anonymous-chat",Anonymouschatsschema)
 
 module.exports={User,Room,Message,Anonymousrooms,Anonymouschat};
 
-// Friend schema
+// Friend schema - store requester/recipient as objects to keep user snapshot
 const friendSchema = new mongoose.Schema({
-    requester: { type: String, required: true }, // email of requester
-    recipient: { type: String, required: true }, // email of recipient
+    requester: {
+        userid: { type: Number, required: true },
+        username: { type: String },
+        name: { type: String },
+        email: { type: String }
+    },
+    recipient: {
+        userid: { type: Number, required: true },
+        username: { type: String },
+        name: { type: String },
+        email: { type: String }
+    },
     status: { type: String, enum: ['pending', 'accepted', 'blocked'], default: 'pending' },
     createdAt: { type: Date, default: Date.now }
 });

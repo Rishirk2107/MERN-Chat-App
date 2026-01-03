@@ -18,6 +18,7 @@ import CreatorDiscussionPage from './pages/CreatorDiscussionPage';
 import FriendsPage from './pages/FriendsPage';
 import PrivateChatPage from './pages/PrivateChatPage';
 import NotFoundPage from './pages/NotFoundPage';
+import ProfilePage from './pages/ProfilePage';
 
 const App: React.FC = () => {
   return (
@@ -28,10 +29,11 @@ const App: React.FC = () => {
         <Route path="/login-admin" element={<LoginAdminPage />} />
         <Route path="/rooms" element={<RoomsPage />} />
         <Route path="/group-route" element={<GroupRoutePage />} />
+        <Route path="/app/profile" element={<ProfilePage />} />
         <Route path="/app/*" element={<MainLayout />}> 
-        <Route path="friends" element={<FriendsPage />} />
-        <Route path="friends/chat/:friendEmail" element={<PrivateChatPage />} />
-        <Route path="group/room/:roomId" element={<CreatorDiscussionPage />} />
+          <Route path="friends" element={<FriendsPage />} />
+          <Route path="friends/chat/:friendEmail" element={<PrivateChatPage />} />
+          <Route path="group/room/:roomId" element={<CreatorDiscussionPage />} />
         </Route>
         <Route path="/create-group" element={<CreateGroupPage />} />
         <Route path="/delete-group" element={<DeleteGroupPage />} />

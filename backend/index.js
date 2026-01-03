@@ -7,6 +7,7 @@ const cors = require('cors');
 const path = require('path');
 const { User, Room, Message, Anonymousrooms, Anonymouschat, Friend } = require('./model/dbmodel');
 const { generateRandomString } = require('./controller/generator');
+const { authenticate, generateToken } = require('./libs/auth/authenticate');
 
 const app = express();
 app.use(cors());
@@ -24,80 +25,55 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 dotenv.config();
 
+// Helper: resolve an identifier (userid number, numeric string, email, username, or user object) to numeric userid
+async function resolveUserIdentifier(identifier) {
+  if (identifier == null) return null;
+
+  // If an object was passed (e.g. a user document from /addUsers), use its fields
+  if (typeof identifier === 'object') {
+    if (typeof identifier.userid === 'number') return identifier.userid;
+    if (typeof identifier.userid === 'string' && /^\d+$/.test(identifier.userid)) return parseInt(identifier.userid, 10);
+    if (identifier.email) {
+      const u = await User.findOne({ email: String(identifier.email) });
+      return u ? u.userid : null;
+    }
+    if (identifier.username) {
+      const u = await User.findOne({ username: String(identifier.username) });
+      return u ? u.userid : null;
+    }
+    return null;
+  }
+
+  if (typeof identifier === 'number') return identifier;
+  const asStr = String(identifier).trim();
+  if (asStr === '') return null;
+  if (/^\d+$/.test(asStr)) return parseInt(asStr, 10);
+  if (asStr.includes('@')) {
+    const u = await User.findOne({ email: asStr });
+    return u ? u.userid : null;
+  }
+  const u = await User.findOne({ username: asStr });
+  return u ? u.userid : null;
+}
+
+async function getUserByIdentifier(identifier) {
+  const uid = await resolveUserIdentifier(identifier);
+  if (uid == null) return null;
+  return await User.findOne({ userid: uid });
+}
+
 // Basic admin (consider moving to env vars for production)
 var admin = { email: 'rishi@gmail.com', password: '12345' };
-
-// Routes
-app.get('/group/room/:roomId', (req, res) => {
-  console.log(req.params.roomId);
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'index.html'));
-});
-
-app.get('/group/route', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'grouproute.html'));
-});
-
-app.get('/user/signup', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'signup.html'));
-});
-
-app.get('/user/login', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'login.html'));
-});
-
-app.get('/admin/signup', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'login-admin.html'));
-});
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'route.html'));
-});
-
-app.get('/group/create', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'creategrp.html'));
-});
-
-app.get('/group/list', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'rooms.html'));
-});
-
-app.get('/group/delete', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'deletegrp.html'));
-});
-
-app.get('/group/adduser', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'adduser', 'adduser.html'));
-});
-
-app.get('/group/removeuser', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'removeusers.html'));
-});
-
-// Anonymous pages
-app.get('/anonymous/', async (req, res) => {
-  // This route performs a redirect/landing
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'anonymousredirect.html'));
-});
-
-app.get('/anonymous/create', async (req, res) => {
-  // Shows the create anonymous discussion page
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'anonymouscreate.html'));
-});
-
-app.get('/anonymous/create-discussion', async (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'anonymouscreate.html'));
-});
-
-app.get('/anonymous/discussion/:discussionid', async (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'front-end', 'templates', 'discussion.html'));
-});
 
 // API endpoints
 app.post('/user/signup', async (req, res) => {
   try {
     console.log(req.body);
-    const { name, email, password, socketid } = req.body;
-    const newUser = new User({ name: name, email: email, password: password, socketid: socketid });
+    const { name, username, email, password, socketid } = req.body;
+    if (!name || !username || !email || !password) return res.status(400).json({ Message: false, error: 'Missing required fields' });
+    const existing = await User.findOne({ $or: [{ email: email }, { username: username }] });
+    if (existing) return res.status(400).json({ Message: false, error: 'Email or username already exists' });
+    const newUser = new User({ name: name, username: username, email: email, password: password, socketid: socketid });
     const savedUser = await newUser.save();
     console.log(savedUser);
     res.json({ Message: 1 });
@@ -112,7 +88,8 @@ app.post('/user/login', async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email: email, password: password });
     if (user) {
-      res.json({ Message: true, name: user.name });
+        const token = generateToken({ userid: user.userid, username: user.username });
+        res.json({ Message: true, name: user.name, userid: user.userid, username: user.username, email: user.email, token });
     } else {
       res.json({ Message: false });
     }
@@ -131,9 +108,9 @@ app.post('/admin/login', (req, res) => {
   }
 });
 
-app.post('/addUsers', async (req, res) => {
+app.post('/users/list', async (req, res) => {
   try {
-    const users = await User.find({}, { _id: 0, email: 1, name: 1 });
+    const users = await User.find({}, { _id: 0, userid: 1, username: 1, name: 1 });
     console.log(users);
     res.json({ users: users });
   } catch (error) {
@@ -142,34 +119,50 @@ app.post('/addUsers', async (req, res) => {
   }
 });
 
-app.post('/submitUsers', async (req, res) => {
+app.post('/rooms/create', authenticate, async (req, res) => {
   try {
-    const { name, selectedEmails, email } = req.body;
-    if (!email) return res.status(400).json({ Message: 'Email required' });
-    const users = selectedEmails;
-    const admin = email;
+    const { name, selectedEmails } = req.body;
+    const adminId = req.userid || await resolveUserIdentifier(req.body.email);
+    if (!adminId) return res.status(400).json({ Message: 'Admin identifier required' });
     const roomid = generateRandomString();
-    const newRoom = new Room({ name: name, roomid: roomid, users: users, admin: admin });
-    const savedRoom = await newRoom.save();
-    console.log(savedRoom);
-    for (const user of savedRoom.users) {
-      const updatedUser = await User.findOneAndUpdate({ email: user }, { $push: { rooms: roomid } });
-      console.log(updatedUser);
+    // resolve selected identifiers (emails/usernames/userids) to numeric userids
+    const userIds = [];
+    const provided = (selectedEmails || []).filter(ident => ident != null && String(ident).trim() !== '');
+    const unresolved = [];
+    for (const ident of provided) {
+      const uid = await resolveUserIdentifier(ident);
+      if (uid != null) userIds.push(uid);
+      else unresolved.push(ident);
     }
-    console.log(savedRoom.users);
-    res.json({ Message: true });
+    if (unresolved.length) console.log('Unresolved selectedEmails (ignored):', unresolved);
+    // Ensure admin is part of the room users
+    if (!userIds.includes(adminId)) userIds.push(adminId);
+
+    const newRoom = new Room({ name: name, roomid: roomid, users: userIds, admin: adminId });
+    const savedRoom = await newRoom.save();
+    console.log('Created room:', savedRoom);
+
+    // Update each user's rooms list (ensure no duplicates)
+    const uniqueUsers = Array.from(new Set(savedRoom.users));
+    for (const uid of uniqueUsers) {
+      await User.findOneAndUpdate({ userid: uid }, { $addToSet: { rooms: roomid } });
+    }
+
+    console.log('Room users updated for:', uniqueUsers);
+    res.json({ Message: true, roomid: roomid, resolvedUserIds: uniqueUsers });
   } catch (error) {
     console.log('Error at creating Room', error);
     res.status(500).json({ Message: false, error: 'Server error' });
   }
 });
 
-app.post('/getRooms', async (req, res) => {
+app.post('/rooms/user', authenticate, async (req, res) => {
   try {
-    const { email } = req.body;
-    const user = email;
+    const { email, userid } = req.body;
+    const userId = req.userid || userid || await resolveUserIdentifier(email);
+    if (!userId) return res.status(400).json({ Message: false, error: 'User not found' });
     const rooms = await User.aggregate([
-      { $match: { email: user } },
+      { $match: { userid: userId } },
       {
         $lookup: {
           from: 'rooms',
@@ -188,25 +181,27 @@ app.post('/getRooms', async (req, res) => {
   }
 });
 
-app.post('/senddata', async (req, res) => {
+app.post('/senddata', authenticate, async (req, res) => {
   try {
-    const { email } = req.body;
-    const user = email;
+    const { email, userid } = req.body;
+    const userId = req.userid || userid || await resolveUserIdentifier(email);
     console.log(req.body.roomid);
-    const messages = await Message.find({ room: req.body.roomid }, { _id: 0, message: 1, user: 1 }).sort({ createdAt: 1 });
-    const username = await User.findOne({ email: user }, { _id: 0, name: 1 });
-    console.log(username);
-    res.json({ user: user, messages: messages });
+    const messages = await Message.find({ room: req.body.roomid }, { _id: 0, message: 1, user: 1, userId:1 }).sort({ createdAt: 1 });
+    const userDoc = await User.findOne({ userid: userId }, { _id: 0, name: 1, username:1 });
+    console.log(userDoc);
+    res.json({ user: userDoc ? (userDoc.username || userDoc.name) : null, messages: messages });
   } catch (error) {
     console.log('Error at senddata', error);
     res.status(500).json({ Message: false });
   }
 });
 
-app.post('/group/showgroups', async (req, res) => {
+app.post('/groups/admin', authenticate, async (req, res) => {
   try {
-    const { email } = req.body;
-    const rooms = await Room.find({ admin: email }, { _id: 0, __v: 0, users: 0 });
+    const { email, userid } = req.body;
+    const adminId = req.userid || userid || await resolveUserIdentifier(email);
+    if (!adminId) return res.status(400).json({ Message: false, error: 'Admin not found' });
+    const rooms = await Room.find({ admin: adminId }, { _id: 0, __v: 0, users: 0 });
     res.json({ rooms: rooms });
   } catch (error) {
     console.log('Error at showgroups', error);
@@ -214,18 +209,19 @@ app.post('/group/showgroups', async (req, res) => {
   }
 });
 
-app.post('/add-user', async (req, res) => {
+app.post('/groups/add-member', authenticate, async (req, res) => {
   try {
-    const { username, groupId, email } = req.body;
+    const { username, groupId } = req.body;
+    const adminId = req.userid || await resolveUserIdentifier(req.body.email);
     const room = await Room.findOne({ roomid: groupId });
     if (!room) return res.status(404).json({ Message: 'Room not found' });
-    if (room.admin !== email) return res.status(403).json({ Message: 'Not authorized' });
-    const user = await User.findOne({ name: username });
+    if (room.admin !== adminId) return res.status(403).json({ Message: 'Not authorized' });
+    const user = await User.findOne({ username: username });
     if (!user) return res.status(404).json({ Message: 'User not found' });
-    if (room.users.includes(user.email)) return res.json({ Message: 'User already in group' });
-    room.users.push(user.email);
+    if (room.users.includes(user.userid)) return res.json({ Message: 'User already in group' });
+    room.users.push(user.userid);
     await room.save();
-    await User.findOneAndUpdate({ email: user.email }, { $push: { rooms: groupId } });
+    await User.findOneAndUpdate({ userid: user.userid }, { $push: { rooms: groupId } });
     res.json({ Message: true });
   } catch (error) {
     console.log('Error at add-user', error);
@@ -233,16 +229,23 @@ app.post('/add-user', async (req, res) => {
   }
 });
 
-app.post('/remove-users', async (req, res) => {
+app.post('/groups/remove-members', authenticate, async (req, res) => {
   try {
-    const { userIds, groupId, email } = req.body;
+    const { userIds, groupId, email, userid } = req.body;
+    const adminId = req.userid || userid || await resolveUserIdentifier(email);
     const room = await Room.findOne({ roomid: groupId });
     if (!room) return res.status(404).json({ Message: 'Room not found' });
-    if (room.admin !== email) return res.status(403).json({ Message: 'Not authorized' });
-    room.users = room.users.filter(u => !userIds.includes(u));
+    if (room.admin !== adminId) return res.status(403).json({ Message: 'Not authorized' });
+    // resolve incoming identifiers to numeric ids
+    const idsToRemove = [];
+    for (const ident of userIds || []) {
+      const uid = await resolveUserIdentifier(ident);
+      if (uid != null) idsToRemove.push(uid);
+    }
+    room.users = room.users.filter(u => !idsToRemove.includes(u));
     await room.save();
-    for (const uid of userIds) {
-      await User.findOneAndUpdate({ email: uid }, { $pull: { rooms: groupId } });
+    for (const uid of idsToRemove) {
+      await User.findOneAndUpdate({ userid: uid }, { $pull: { rooms: groupId } });
     }
     res.json({ Message: true });
   } catch (error) {
@@ -251,7 +254,7 @@ app.post('/remove-users', async (req, res) => {
   }
 });
 
-app.post('/group/delete', async (req, res) => {
+app.post('/groups/delete', authenticate, async (req, res) => {
   try {
     console.log(req.body.selectedRooms);
     for (const element of req.body.selectedRooms) {
@@ -267,11 +270,13 @@ app.post('/group/delete', async (req, res) => {
   }
 });
 
-app.post('/admin/getrooms', async (req, res) => {
+app.post('/admin/rooms', authenticate, async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, userid } = req.body;
+    const userId = req.userid || userid || await resolveUserIdentifier(email);
+    if (!userId) return res.status(400).json({ Message: false, error: 'User not found' });
     // return rooms where user is admin or a member, and include admin field
-    const rooms = await Room.find({ $or: [{ admin: email }, { users: email }] }, { _id: 0, roomid: 1, name: 1, admin: 1 });
+    const rooms = await Room.find({ $or: [{ admin: userId }, { users: userId }] }, { _id: 0, roomid: 1, name: 1, admin: 1 });
     console.log(rooms);
     res.json({ rooms: rooms });
   } catch (error) {
@@ -280,15 +285,12 @@ app.post('/admin/getrooms', async (req, res) => {
   }
 });
 
-app.post('/admin/addUsers', async (req, res) => {
+app.post('/admin/users/available', authenticate, async (req, res) => {
   try {
     console.log(req.body, 'Hello');
     const roomid = req.body.roomId;
-    const remusers = await User.aggregate([
-      { $lookup: { from: 'rooms', localField: 'email', foreignField: 'users', as: 'userRooms' } },
-      { $match: { 'userRooms.roomid': { $ne: roomid } } },
-      { $project: { _id: 0, email: 1, name: 1 } }
-    ]);
+    // return users who are not part of the room
+    const remusers = await User.find({ rooms: { $ne: roomid } }, { _id: 0, userid: 1, username: 1, name: 1 });
     console.log(remusers, '@');
     res.json({ users: remusers });
   } catch (error) {
@@ -297,15 +299,17 @@ app.post('/admin/addUsers', async (req, res) => {
   }
 });
 
-app.post('/group/addusers', async (req, res) => {
+app.post('/groups/add', authenticate, async (req, res) => {
   try {
     console.log(req.body);
     const { selectedEmails, roomId } = req.body;
-    for (let i = 0; i < selectedEmails.length; i++) {
-      const email = selectedEmails[i];
+    for (let i = 0; i < (selectedEmails || []).length; i++) {
+      const ident = selectedEmails[i];
+      const uid = await resolveUserIdentifier(ident);
       const room = await Room.findOne({ roomid: roomId });
-      if (room && !room.users.includes(email)) {
-        await Room.updateOne({ roomid: roomId }, { $push: { users: email } });
+      if (room && uid != null && !room.users.includes(uid)) {
+        await Room.updateOne({ roomid: roomId }, { $push: { users: uid } });
+        await User.findOneAndUpdate({ userid: uid }, { $push: { rooms: roomId } });
       }
     }
     res.json({ Message: true });
@@ -315,19 +319,14 @@ app.post('/group/addusers', async (req, res) => {
   }
 });
 
-app.post('/admin/remUsers', async (req, res) => {
+app.post('/admin/rooms/users', authenticate, async (req, res) => {
   try {
     console.log(req.body);
     const roomid = req.body.roomId;
-    const result = await Room.aggregate([
-      { $match: { roomid: roomid } },
-      { $addFields: { users: { $filter: { input: '$users', as: 'user', cond: { $ne: ['$$user', '$admin'] } } } } },
-      { $unwind: '$users' },
-      { $lookup: { from: 'users', localField: 'users', foreignField: 'email', as: 'userData' } },
-      { $unwind: '$userData' },
-      { $project: { _id: 0, name: '$userData.name', email: '$userData.email' } }
-    ]);
-
+    const room = await Room.findOne({ roomid: roomid });
+    if (!room) return res.json({ Users: [] });
+    const users = room.users.filter(u => u !== room.admin);
+    const result = await User.find({ userid: { $in: users } }, { _id: 0, name: 1, userid: 1, username: 1 });
     console.log(result);
     res.json({ Users: result });
   } catch (error) {
@@ -336,13 +335,18 @@ app.post('/admin/remUsers', async (req, res) => {
   }
 });
 
-app.post('/group/removeusers', async (req, res) => {
+app.post('/groups/remove', authenticate, async (req, res) => {
   try {
     console.log(req.body);
     const { selectedEmails, roomId } = req.body;
-    for (let i = 0; i < selectedEmails.length; i++) {
-      const result = await Room.updateOne({ roomid: roomId }, { $pull: { users: selectedEmails[i] } });
-      console.log(result);
+    for (let i = 0; i < (selectedEmails || []).length; i++) {
+      const ident = selectedEmails[i];
+      const uid = await resolveUserIdentifier(ident);
+      if (uid != null) {
+        const result = await Room.updateOne({ roomid: roomId }, { $pull: { users: uid } });
+        await User.findOneAndUpdate({ userid: uid }, { $pull: { rooms: roomId } });
+        console.log(result);
+      }
     }
     res.json({ Message: true });
   } catch (error) {
@@ -354,9 +358,10 @@ app.post('/group/removeusers', async (req, res) => {
 app.post('/create/discussion', async (req, res) => {
   try {
     console.log(req.body);
-    const { email } = req.body;
-    if (email) {
-      const discussion = new Anonymousrooms({ topic: req.body.topic, topicId: generateRandomString(), createdBy: email });
+    const { email, userid } = req.body;
+    const creatorId = userid || await resolveUserIdentifier(email);
+    if (creatorId) {
+      const discussion = new Anonymousrooms({ topic: req.body.topic, topicId: generateRandomString(), createdBy: creatorId });
       const result = await discussion.save();
       console.log(result);
       if (discussion) {
@@ -377,10 +382,13 @@ app.post('/create/discussion', async (req, res) => {
 // Search users by name (exclude requester)
 app.post('/friends/search', async (req, res) => {
   try {
-    const { name, email } = req.body;
-    if (!name) return res.status(400).json({ Message: false, error: 'Name required' });
-    const regex = new RegExp(name, 'i');
-    const users = await User.find({ name: regex, email: { $ne: email } }, { _id: 1, name: 1, email: 1 });
+    // search by `username` primarily; fall back to `name` for compatibility
+    const { username, name, email, userid } = req.body;
+    const queryTerm = username || name;
+    if (!queryTerm) return res.status(400).json({ Message: false, error: 'Username required' });
+    const requesterId = userid || await resolveUserIdentifier(email);
+    const regex = new RegExp(queryTerm, 'i');
+    const users = await User.find({ $and: [ { $or: [ { username: regex }, { name: regex } ] }, { userid: { $ne: requesterId } } ] }, { _id: 0, userid: 1, username: 1, name: 1 });
     res.json({ users });
   } catch (error) {
     console.log('Error at friends.search', error);
@@ -389,22 +397,28 @@ app.post('/friends/search', async (req, res) => {
 });
 
 // Send friend request
-app.post('/friends/request', async (req, res) => {
+app.post('/friends/request', authenticate, async (req, res) => {
   try {
-    const { email, targetEmail } = req.body; // email = requester
-    if (!email || !targetEmail) return res.status(400).json({ Message: false, error: 'Missing params' });
-
-    // prevent self-request
-    if (email === targetEmail) return res.status(400).json({ Message: false, error: 'Cannot friend yourself' });
-
-    // check existing relation
+    const { email, targetEmail, userid, targetId } = req.body; // email = requester
+    const requesterId = req.userid || userid || await resolveUserIdentifier(email);
+    const recipientId = targetId || await resolveUserIdentifier(targetEmail);
+    if (!requesterId || !recipientId) return res.status(400).json({ Message: false, error: 'Missing params' });
+    if (requesterId === recipientId) return res.status(400).json({ Message: false, error: 'Cannot friend yourself' });
+    // check existing relationship either direction using nested userid fields
     const existing = await Friend.findOne({ $or: [
-      { requester: email, recipient: targetEmail },
-      { requester: targetEmail, recipient: email }
+      { 'requester.userid': requesterId, 'recipient.userid': recipientId },
+      { 'requester.userid': recipientId, 'recipient.userid': requesterId }
     ]});
     if (existing) return res.json({ Message: false, error: 'Request already exists or you are already friends' });
-
-    const fr = new Friend({ requester: email, recipient: targetEmail, status: 'pending' });
+    // fetch user snapshots
+    const requesterDoc = await User.findOne({ userid: requesterId }, { _id: 0, userid: 1, username: 1, name: 1, email: 1 });
+    const recipientDoc = await User.findOne({ userid: recipientId }, { _id: 0, userid: 1, username: 1, name: 1, email: 1 });
+    if (!requesterDoc || !recipientDoc) return res.status(400).json({ Message: false, error: 'User(s) not found' });
+    const fr = new Friend({
+      requester: { userid: requesterDoc.userid, username: requesterDoc.username, name: requesterDoc.name, email: requesterDoc.email },
+      recipient: { userid: recipientDoc.userid, username: recipientDoc.username, name: recipientDoc.name, email: recipientDoc.email },
+      status: 'pending'
+    });
     await fr.save();
     res.json({ Message: true });
   } catch (error) {
@@ -414,11 +428,12 @@ app.post('/friends/request', async (req, res) => {
 });
 
 // Get incoming friend requests
-app.post('/friends/incoming', async (req, res) => {
+app.post('/friends/incoming', authenticate, async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ Message: false });
-    const requests = await Friend.find({ recipient: email, status: 'pending' }, { _id: 1, requester: 1, createdAt: 1 });
+    const { email, userid } = req.body;
+    const recipientId = req.userid || userid || await resolveUserIdentifier(email);
+    if (!recipientId) return res.status(400).json({ Message: false });
+    const requests = await Friend.find({ 'recipient.userid': recipientId, status: 'pending' }, { _id: 1, requester: 1, createdAt: 1 });
     res.json({ requests });
   } catch (error) {
     console.log('Error at friends.incoming', error);
@@ -427,11 +442,13 @@ app.post('/friends/incoming', async (req, res) => {
 });
 
 // Accept friend request
-app.post('/friends/accept', async (req, res) => {
+app.post('/friends/accept', authenticate, async (req, res) => {
   try {
-    const { email, requester } = req.body; // email is recipient
-    if (!email || !requester) return res.status(400).json({ Message: false });
-    const updated = await Friend.findOneAndUpdate({ requester: requester, recipient: email, status: 'pending' }, { status: 'accepted' }, { new: true });
+    const { email, requester, userid, requesterId } = req.body; // email is recipient
+    const recipientId = req.userid || userid || await resolveUserIdentifier(email);
+    const reqId = requesterId || await resolveUserIdentifier(requester);
+    if (!recipientId || !reqId) return res.status(400).json({ Message: false });
+    const updated = await Friend.findOneAndUpdate({ 'requester.userid': reqId, 'recipient.userid': recipientId, status: 'pending' }, { status: 'accepted' }, { new: true });
     if (!updated) return res.status(404).json({ Message: false, error: 'Request not found' });
     res.json({ Message: true });
   } catch (error) {
@@ -443,9 +460,10 @@ app.post('/friends/accept', async (req, res) => {
 // List friends
 app.post('/friends/list', async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ Message: false });
-    const friends = await Friend.find({ $or: [ { requester: email }, { recipient: email } ], status: 'accepted' });
+    const { email, userid } = req.body;
+    const userId = req.userid || userid || await resolveUserIdentifier(email);
+    if (!userId) return res.status(400).json({ Message: false });
+    const friends = await Friend.find({ $or: [ { 'requester.userid': userId }, { 'recipient.userid': userId } ], status: 'accepted' });
     res.json({ friends });
   } catch (error) {
     console.log('Error at friends.list', error);
@@ -472,33 +490,42 @@ io.on('connection', (socket) => {
   socket.on('joinRoom', async (room, user) => {
     try {
       const result = await Room.findOne({ roomid: room });
+      // Accept `user` as a primitive identifier or an object snapshot
+      let userIdentifier = user;
+      if (user && typeof user === 'object') {
+        userIdentifier = user.userid || user.email || user.username || user.id || JSON.stringify(user);
+      }
+      // resolve user identifier to numeric userid
+      const userId = await resolveUserIdentifier(userIdentifier);
       if (result) {
-        if (result.admin === user || result.users.includes(user)) {
+        if (userId != null && (result.admin === userId || result.users.includes(userId))) {
           socket.join(room);
-          console.log(`User ${user} joined room ${room}`);
+          console.log(`User ${userId} joined room ${room}`);
         } else {
           console.log('Unauthorised Access for', user, 'in room', room);
         }
       } else {
-        // For direct messages (dm:emailA|emailB) ensure friendship
+        // For direct messages (dm:identA|identB) ensure friendship
         if (room.startsWith('dm:')) {
           const parts = room.replace('dm:', '').split('|');
           if (parts.length === 2) {
             const [a, b] = parts;
+            const aId = await resolveUserIdentifier(a);
+            const bId = await resolveUserIdentifier(b);
             // allow if user matches one of the participants and they are friends
-            if (user === a || user === b) {
+            if (userId === aId || userId === bId) {
               const friend = await Friend.findOne({
                 $or: [
-                  { requester: a, recipient: b },
-                  { requester: b, recipient: a }
+                  { 'requester.userid': aId, 'recipient.userid': bId },
+                  { 'requester.userid': bId, 'recipient.userid': aId }
                 ],
                 status: 'accepted'
               });
               if (friend) {
                 socket.join(room);
-                console.log(`User ${user} joined DM room ${room}`);
+                console.log(`User ${userId} joined DM room ${room}`);
               } else {
-                console.log('DM join denied - not friends', a, b);
+                console.log('DM join denied - not friends', aId, bId);
               }
             } else {
               console.log('DM join denied - user not part of DM', user, room);
@@ -519,11 +546,18 @@ io.on('connection', (socket) => {
 
   socket.on('sendMessage', async (room, message, user) => {
     try {
-      const username = await User.findOne({ email: user }, { name: 1 });
-      const mes = new Message({ user: username.name, message: message, room: room });
+      // Accept `user` as a primitive identifier or an object snapshot
+      let userIdentifier = user;
+      if (user && typeof user === 'object') {
+        userIdentifier = user.userid || user.email || user.username || user.id || JSON.stringify(user);
+      }
+      const userId = await resolveUserIdentifier(userIdentifier);
+      const userDoc = await User.findOne({ userid: userId }, { name: 1, username: 1 });
+      const displayName = userDoc ? (userDoc.username || userDoc.name) : (typeof user === 'string' ? user : (user && user.name) || (user && user.username) || String(user));
+      const mes = new Message({ userId: userId, user: displayName, message: message, room: room });
       const newmes = await mes.save();
       console.log(newmes);
-      socket.broadcast.to(room).emit('message', message, username.name);
+      socket.broadcast.to(room).emit('message', message, displayName);
     } catch (error) {
       console.log('Error at sendMessage', error);
     }

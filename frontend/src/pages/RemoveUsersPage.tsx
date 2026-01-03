@@ -24,16 +24,18 @@ const RemoveUsersPage: React.FC = () => {
   const modalGroup = params.get('group');
 
   useEffect(() => {
-    const email = localStorage.getItem('email');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const email = user ? user.email : null;
     if (!email) {
       navigate('/login');
       return;
     }
     const fetchGroups = async () => {
       try {
-        const response = await api.post('/admin/getrooms', { email });
+            const response = await api.post('/admin/rooms', { userid: user.userid });
         // only include admin groups for remove-users flow
-        const list = (response.data.rooms || []).filter((r: any) => r.admin === email);
+        const list = (response.data.rooms || []).filter((r: any) => r.admin === user.userid);
         setGroups(list);
         // preselect group from query param if provided
         const q = modalGroup;
@@ -49,7 +51,7 @@ const RemoveUsersPage: React.FC = () => {
     if (selectedGroup) {
       const fetchUsers = async () => {
         try {
-          const response = await api.post('/admin/remUsers', { roomId: selectedGroup });
+              const response = await api.post('/admin/rooms/users', { roomId: selectedGroup });
           setUsers(response.data.Users);
         } catch (error) {
           console.error('Error fetching users:', error);
@@ -69,13 +71,15 @@ const RemoveUsersPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const email = localStorage.getItem('email');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const email = user ? user.email : null;
     if (!email) {
       toast.error('Please login first');
       return;
     }
     try {
-      await api.post('/remove-users', { userIds: selectedUsers, groupId: selectedGroup, email });
+      await api.post('/groups/remove-members', { userIds: selectedUsers, groupId: selectedGroup, userid: user.userid });
       toast.success('Users removed successfully');
       // if opened as modal, go back, otherwise navigate to group route
       if (modalGroup) navigate(-1);

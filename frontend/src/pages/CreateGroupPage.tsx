@@ -4,7 +4,8 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 interface User {
-  email: string;
+  userid: number;
+  username: string;
   name: string;
 }
 
@@ -17,7 +18,7 @@ const CreateGroupPage: React.FC = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await api.post('/addUsers');
+        const response = await api.post('/users/list');
         setUsers(response.data.users);
       } catch (error) {
         console.error('Error fetching users:', error);
@@ -26,23 +27,25 @@ const CreateGroupPage: React.FC = () => {
     fetchUsers();
   }, []);
 
-  const handleUserChange = (email: string, checked: boolean) => {
+  const handleUserChange = (identifier: string, checked: boolean) => {
     if (checked) {
-      setSelectedUsers([...selectedUsers, email]);
+      setSelectedUsers([...selectedUsers, identifier]);
     } else {
-      setSelectedUsers(selectedUsers.filter(e => e !== email));
+      setSelectedUsers(selectedUsers.filter(e => e !== identifier));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const email = localStorage.getItem('email');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const email = user ? user.email : null;
     if (!email) {
       toast.error('Please login first');
       return;
     }
     try {
-      await api.post('/submitUsers', { name: groupName, selectedEmails: selectedUsers, email });
+      await api.post('/rooms/create', { name: groupName, selectedEmails: selectedUsers, email });
       toast.success('Group created successfully');
       navigate('/rooms');
     } catch (error) {
@@ -65,13 +68,13 @@ const CreateGroupPage: React.FC = () => {
         <h3>Select Users:</h3>
         <div className="checkbox-group">
           {users.map(user => (
-            <label key={user.email}>
+            <label key={user.userid}>
               <input
                 type="checkbox"
-                value={user.email}
-                onChange={(e) => handleUserChange(user.email, e.target.checked)}
+                value={user.username}
+                onChange={(e) => handleUserChange(user.username, e.target.checked)}
               />
-              {user.name}
+              {user.name} ({user.username})
             </label>
           ))}
         </div>

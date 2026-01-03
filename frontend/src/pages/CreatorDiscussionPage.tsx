@@ -11,15 +11,17 @@ const CreatorDiscussionPage: React.FC = () => {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const email = localStorage.getItem('email');
-    if (!email) return;
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const userid = localStorage.getItem('userid') || (user ? String(user.userid) : '');
+    if (!userid) return;
 
     socketRef.current = io(import.meta.env.VITE_API_URL || 'http://localhost:3000');
 
-    socketRef.current.emit('joinRoom', room, email);
+    socketRef.current.emit('joinRoom', room, userid);
 
     // Fetch existing messages
-    api.post('/senddata', { roomid: room, email }).then(response => {
+    api.post('/senddata', { roomid: room, userid }).then(response => {
       const data = response.data;
       if (data.messages) {
         setMessages(data.messages.map((m: any) => `${m.user}: ${m.message}`));
@@ -36,13 +38,15 @@ const CreatorDiscussionPage: React.FC = () => {
   }, [room]);
 
   const sendMessage = () => {
-    const email = localStorage.getItem('email');
-    const name = localStorage.getItem('name');
-    if (!email || !name) return;
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const userid = localStorage.getItem('userid') || (user ? String(user.userid) : '');
+    const name = (user ? (user.name || user.username) : '') || localStorage.getItem('name');
+    if (!userid || !name) return;
 
     if (message.trim() && socketRef.current) {
       setMessages(prev => [...prev, `${name}: ${message}`]);
-      socketRef.current.emit('sendMessage', room, message, email);
+      socketRef.current.emit('sendMessage', room, message, userid);
       setMessage('');
     }
   };

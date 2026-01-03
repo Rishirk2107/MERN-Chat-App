@@ -10,14 +10,16 @@ const RoomsPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const email = localStorage.getItem('email');
-    if (!email) {
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const userid = localStorage.getItem('userid') || (user ? String(user.userid) : '');
+    if (!userid) {
       navigate('/login');
       return;
     }
     const fetchRooms = async () => {
       try {
-        const response = await api.post('/getRooms', { email });
+        const response = await api.post('/rooms/user', { userid });
         const data = response.data;
         const roomsData = data.userRooms || data;
         if (Array.isArray(roomsData)) {

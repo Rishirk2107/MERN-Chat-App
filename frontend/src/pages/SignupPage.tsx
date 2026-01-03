@@ -5,6 +5,7 @@ import '../assets/styles.css';
 
 const SignupPage: React.FC = () => {
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,15 +17,15 @@ const SignupPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.post('/user/signup', { name, email, password });
+      const response = await api.post('/user/signup', { name, username, email, password });
       const data = response.data;
       if (data.Message === 1) {
         navigate('/login');
       } else {
-        setError('Signup failed.');
+        setError(data.error || 'Signup failed.');
       }
-    } catch (err) {
-      setError('There was a problem with your signup.');
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'There was a problem with your signup.');
     } finally {
       setLoading(false);
     }
@@ -40,6 +41,13 @@ const SignupPage: React.FC = () => {
           placeholder="Name"
           value={name}
           onChange={e => setName(e.target.value)}
+          required
+        />
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={e => setUsername(e.target.value)}
           required
         />
         <input

@@ -22,8 +22,18 @@ const LoginPage: React.FC = () => {
       } else if (data && data.Message === false) {
         setError('Login failed.');
       } else {
-        localStorage.setItem('email', email);
-        localStorage.setItem('name', data.name);
+        const userObj: any = {
+          userid: data.userid,
+          username: data.username,
+          email: email,
+          name: data.name
+        };
+        // store full user object for new codepaths
+        localStorage.setItem('user', JSON.stringify(userObj));
+        // store token for authenticated requests
+        if (data.token) localStorage.setItem('token', data.token);
+        // // keep legacy keys for backward compatibility
+        // localStorage.setItem('email', email);
         navigate('/app');
       }
     } catch (err) {

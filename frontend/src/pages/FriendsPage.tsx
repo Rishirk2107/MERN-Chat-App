@@ -3,8 +3,8 @@ import api from '../utils/api';
 import '../assets/styles.css';
 import toast from 'react-hot-toast';
 
-type UserResult = { _id?: string; name: string; email: string };
-type FriendRequest = { _id: string; requester: string; createdAt: string };
+type UserResult = { userid: number; name: string; username?: string };
+type FriendRequest = { _id: string; requester: { userid: number; username?: string; name?: string; email?: string }; createdAt: string };
 
 const FriendsPage: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -12,16 +12,19 @@ const FriendsPage: React.FC = () => {
   const [incoming, setIncoming] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const email = localStorage.getItem('email') || '';
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const email = user ? user.email : '';
+  const userid = user ? user.userid : null;
 
   useEffect(() => {
-    if (!email) return;
+    if (!userid) return;
     fetchIncoming();
-  }, [email]);
+  }, [userid]);
 
   const fetchIncoming = async () => {
     try {
-      const res = await api.post('/friends/incoming', { email });
+      const res = await api.post('/friends/incoming', { userid });
       setIncoming(res.data.requests || []);
     } catch (err) {
       console.error('Error fetching incoming requests', err);
@@ -33,7 +36,7 @@ const FriendsPage: React.FC = () => {
     if (!query.trim()) return;
     setLoading(true);
     try {
-      const res = await api.post('/friends/search', { name: query.trim(), email });
+      const res = await api.post('/friends/search', { username: query.trim(), userid });
       setResults(res.data.users || []);
     } catch (err) {
       console.error('Search error', err);
@@ -42,9 +45,9 @@ const FriendsPage: React.FC = () => {
     }
   };
 
-  const sendRequest = async (targetEmail: string) => {
+  const sendRequest = async (targetUserid: number) => {
     try {
-      await api.post('/friends/request', { email, targetEmail });
+      await api.post('/friends/request', { userid, targetId: targetUserid });
       toast.success('Friend request sent');
     } catch (err) {
       console.error('Error sending request', err);
@@ -52,9 +55,9 @@ const FriendsPage: React.FC = () => {
     }
   };
 
-  const acceptRequest = async (requester: string) => {
+  const acceptRequest = async (requesterId: number) => {
     try {
-      await api.post('/friends/accept', { email, requester });
+      await api.post('/friends/accept', { userid, requesterId });
       toast.success('Friend request accepted');
       fetchIncoming();
     } catch (err) {
@@ -85,14 +88,14 @@ const FriendsPage: React.FC = () => {
         <div className="mt-4 space-y-3">
           {results.length === 0 && <p className="text-sm text-slate-400">No results</p>}
           {results.map(r => (
-            <div key={r.email} className="flex justify-between items-center p-3 bg-slate-800 rounded shadow-sm border border-slate-700">
+            <div key={r.userid} className="flex justify-between items-center p-3 bg-slate-800 rounded shadow-sm border border-slate-700">
               <div>
-                <div className="font-medium text-slate-100">{r.name}</div>
-                <div className="text-xs text-slate-400">{r.email}</div>
+                <div className="font-medium text-slate-100">{r.username || r.name}</div>
+                <div className="text-xs text-slate-400">ID: {r.userid}</div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => sendRequest(r.email)} className="px-3 py-1 border border-slate-600 rounded text-sm text-slate-100">Send</button>
-                <button className="px-3 py-1 bg-indigo-600 text-white rounded text-sm" onClick={() => window.location.href = `/app/friends/chat/${encodeURIComponent(r.email)}`}>Chat</button>
+                <button onClick={() => sendRequest(r.userid)} className="px-3 py-1 border border-slate-600 rounded text-sm text-slate-100">Send</button>
+                <button className="px-3 py-1 bg-indigo-600 text-white rounded text-sm" onClick={() => window.location.href = `/app/friends/chat/${encodeURIComponent(String(r.userid))}`}>Chat</button>
               </div>
             </div>
           ))}
@@ -106,11 +109,11 @@ const FriendsPage: React.FC = () => {
           {incoming.map(req => (
             <div key={req._id} className="flex justify-between items-center p-3 bg-slate-800 rounded shadow-sm border border-slate-700">
               <div>
-                <div className="font-medium text-slate-100">{req.requester}</div>
+                <div className="font-medium text-slate-100">{req.requester.username || req.requester.name || `ID: ${req.requester.userid}`}</div>
                 <div className="text-xs text-slate-400">{new Date(req.createdAt).toLocaleString()}</div>
               </div>
               <div>
-                <button onClick={() => acceptRequest(req.requester)} className="px-3 py-1 bg-green-600 text-white rounded text-sm">Accept</button>
+                <button onClick={() => acceptRequest(req.requester.userid)} className="px-3 py-1 bg-green-600 text-white rounded text-sm">Accept</button>
               </div>
             </div>
           ))}
