@@ -14,7 +14,7 @@ const FriendsPage: React.FC = () => {
 
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
-  const email = user ? user.email : '';
+  // email not used
   const userid = user ? user.userid : null;
 
   useEffect(() => {

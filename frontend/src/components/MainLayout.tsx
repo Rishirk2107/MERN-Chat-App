@@ -7,7 +7,7 @@ import CreateGroupModal from './CreateGroupModal';
 import toast from 'react-hot-toast';
 
 type Room = { name: string; roomid: string; admin?: string };
-type Friend = { requester?: string; recipient?: string; email?: string; name?: string };
+
 
 const MainLayout: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -17,7 +17,7 @@ const MainLayout: React.FC = () => {
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
     const userid = localStorage.getItem('userid') || (user ? String(user.userid) : '') || '';
-    const email = user ? user.email : '';
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -82,14 +82,7 @@ const MainLayout: React.FC = () => {
 
   // const [showProfile, setShowProfile] = useState(false);
 
-  const handleLogout = () => {
-    try {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('userid');
-    } catch (e) { /* ignore */ }
-    navigate('/login');
-  };
+
 
   return (
     <div className="flex h-screen bg-slate-900 text-slate-100">
