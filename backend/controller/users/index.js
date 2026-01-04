@@ -4,11 +4,23 @@ const { generateToken } = require('../../libs/auth/authenticate');
 async function signup(req, res) {
   try {
     console.log(req.body);
-    const { name, username, email, password, socketid } = req.body;
+    const { name, username, email, password, socketid, mobileNumber, dob, gender, state, country, bio } = req.body;
     if (!name || !username || !email || !password) return res.status(400).json({ Message: false, error: 'Missing required fields' });
     const existing = await User.findOne({ $or: [{ email: email }, { username: username }] });
     if (existing) return res.status(400).json({ Message: false, error: 'Email or username already exists' });
-    const newUser = new User({ name: name, username: username, email: email, password: password, socketid: socketid });
+    const newUser = new User({
+      name: name,
+      username: username,
+      email: email,
+      password: password,
+      socketid: socketid,
+      mobileNumber: mobileNumber || null,
+      dob: dob ? new Date(dob) : null,
+      gender: gender || null,
+      state: state || null,
+      country: country || null,
+      bio: bio || null
+    });
     const savedUser = await newUser.save();
     console.log(savedUser);
     res.json({ Message: 1 });

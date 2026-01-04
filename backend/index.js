@@ -5,9 +5,7 @@ const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
-const { User, Room, Message, Anonymousrooms, Anonymouschat, Friend } = require('./model/dbmodel');
-const { generateRandomString } = require('./libs/helpers/generator');
-const { authenticate, generateToken } = require('./libs/auth/authenticate');
+const { authenticate} = require('./libs/auth/authenticate');
 
 const app = express();
 app.use(cors());
@@ -25,7 +23,6 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 dotenv.config();
 // Import modular controllers
-const helpers = require('./libs/helpers/helpers');
 const usersController = require('./controller/users');
 const roomsController = require('./controller/rooms');
 const groupsController = require('./controller/groups');

@@ -20,6 +20,31 @@ const UserSchema=new mongoose.Schema({
         type:String,
         required:true
     },
+    mobileNumber: {
+        type: String,
+        required: false
+    },
+    dob: {
+        type: Date,
+        required: false
+    },
+    gender: {
+        type: String,
+        enum: ['male','female','other','prefer_not_say'],
+        required: false
+    },
+    state: {
+        type: String,
+        required: false
+    },
+    country: {
+        type: String,
+        required: false
+    },
+    bio: {
+        type: String,
+        required: false
+    },
     userid:{
         type:Number,
         unique:true
