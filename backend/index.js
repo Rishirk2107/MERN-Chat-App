@@ -30,6 +30,7 @@ const adminController = require('./controller/admin');
 const anonymousController = require('./controller/anonymous');
 const friendsController = require('./controller/friends');
 const initSockets = require('./controller/sockets');
+const initFiles = require('./controller/files');
 
 // Wire routes to controllers
 app.post('/user/signup', usersController.signup);
@@ -64,6 +65,9 @@ app.post('/friends/list', friendsController.list);
 
 // Initialize socket handlers
 initSockets(io);
+
+// Initialize file upload routes (needs access to io)
+initFiles(app, io);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

@@ -9,13 +9,15 @@ const PrivateChatPage: React.FC = () => {
   const { friendEmail } = useParams<{ friendEmail: string }>();
   const friend = decodeURIComponent(friendEmail || '');
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<string[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [fileUploading, setFileUploading] = useState(false);
   const socketRef = useRef<Socket | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
   const me = localStorage.getItem('userid') || (user ? String(user.userid) : '') || '';
-  const myName = (user ? (user.name || user.username) : '') || localStorage.getItem('name') || '';
+  const myName = (user ? (user.username || user.name) : '') || localStorage.getItem('username') || localStorage.getItem('name') || '';
 
   // deterministic room id for DM
   const roomId = React.useMemo(() => {
@@ -33,12 +35,21 @@ const PrivateChatPage: React.FC = () => {
     api.post('/senddata', { roomid: roomId, userid: me }).then(response => {
       const data = response.data;
       if (data.messages) {
-        setMessages(data.messages.map((m: any) => `${m.user}: ${m.message}`));
+        setMessages(data.messages.map((m: any) => ({ type: m.type || 'text', message: m.message, file: m.file, user: m.user, createdAt: m.createdAt })));
       }
     }).catch(err => console.error('Error fetching DM messages', err));
 
-    socketRef.current.on('message', (msg: string, user: string) => {
-      setMessages(prev => [...prev, `${user}: ${msg}`]);
+    socketRef.current.on('message', (msg: any, user: string) => {
+      if (!msg) return;
+      if (typeof msg === 'string') {
+        setMessages(prev => [...prev, { type: 'text', message: msg, user }]);
+      } else if (typeof msg === 'object') {
+        if (msg.type === 'file') {
+          setMessages(prev => [...prev, { type: 'file', file: msg.file, user }]);
+        } else {
+          setMessages(prev => [...prev, { type: msg.type || 'text', message: msg.message || '', file: msg.file || null, user: user }]);
+        }
+      }
     });
 
     return () => {
@@ -48,7 +59,7 @@ const PrivateChatPage: React.FC = () => {
 
   const sendMessage = () => {
     if (!message.trim() || !socketRef.current) return;
-    setMessages(prev => [...prev, `${myName}: ${message}`]);
+    setMessages(prev => [...prev, { type: 'text', message: message, user: myName }]);
     socketRef.current.emit('sendMessage', roomId, message, me);
     setMessage('');
   };
@@ -58,12 +69,10 @@ const PrivateChatPage: React.FC = () => {
       <div className="flex-1 overflow-auto px-0 py-6 md:px-8 md:py-8" style={{ minHeight: 0 }}>
         <div className="flex flex-col gap-3">
           {messages.map((msg, i) => {
-            const parts = msg.split(': ');
-            const author = parts.shift() || '';
-            const text = parts.join(': ');
-            const isMe = author === myName;
+            const author = msg.user || myName;
+            const isMe = String(author) === String(myName);
             return (
-              <ChatMessage key={i} text={text} author={author} isMe={isMe} />
+              <ChatMessage key={i} text={msg.message} file={msg.file} author={author} isMe={isMe} />
             );
           })}
         </div>
@@ -78,6 +87,43 @@ const PrivateChatPage: React.FC = () => {
           className="flex-1 bg-transparent text-[15px] text-slate-100 placeholder-slate-400 px-4 py-2 rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-600 transition"
           style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
         />
+        <label className="flex items-center">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="sr-only"
+            onChange={async (e) => {
+              const f = e.target.files && e.target.files[0];
+              if (!f) return;
+              const MAX = 20 * 1024 * 1024; // 20MB
+              if (f.size > MAX) {
+                alert('File too large. Maximum allowed size is 20 MB.');
+                e.currentTarget.value = '';
+                return;
+              }
+              try {
+                setFileUploading(true);
+                const form = new FormData();
+                form.append('file', f);
+                form.append('room', roomId);
+                form.append('user', me);
+                await fetch((import.meta.env.VITE_API_URL || 'http://localhost:3000') + '/file/upload', {
+                  method: 'POST',
+                  body: form,
+                });
+              } catch (err) {
+                console.error('Upload error', err);
+                alert('Upload failed');
+              } finally {
+                setFileUploading(false);
+                e.currentTarget.value = '';
+              }
+            }}
+          />
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Upload file">
+            {fileUploading ? 'Uploading...' : '📎'}
+          </button>
+        </label>
         <button
           onClick={sendMessage}
           className="p-2 rounded-full bg-cyan-700 hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-cyan-400 flex items-center justify-center transition"

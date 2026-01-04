@@ -113,28 +113,53 @@ const roomSchema=new mongoose.Schema({
 
 const Room=mongoose.model("Rooms",roomSchema);
 
-const messageSchema=new mongoose.Schema({
-    userId:{
-        type:Number,
-        required:true
-    },
-    user:{
-        type:String,
-        required:true
-    },
-    message:{
-        type:String,
-        required:true
-    },
-    room:{
-        type:String,
-        required:true
-    },
-    createdAt:{
-        type:Date,
-        default:Date.now
+const messageSchema = new mongoose.Schema({
+  userId: {
+    type: Number,
+    required: true
+  },
+
+  user: {
+    type: String,
+    required: true
+  },
+
+  room: {
+    type: String,
+    required: true
+  },
+
+  // message type: text or file
+  type: {
+    type: String,
+    enum: ["text", "file"],
+    default: "text"
+  },
+
+  // only required for text messages
+  message: {
+    type: String,
+    required: function () {
+      return this.type === "text";
     }
+  },
+
+  // Cloudinary file metadata
+  file: {
+    publicId: { type: String },      // Cloudinary public_id
+    url: { type: String },           // secure_url
+    originalName: { type: String },  // original file name
+    format: { type: String },        // jpg, png, pdf, mp4
+    resourceType: { type: String },  // image, video, raw
+    bytes: { type: Number }          // file size
+  },
+
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
+
 
 const Message=mongoose.model("Messages",messageSchema);
 
