@@ -11,9 +11,11 @@ interface ChatMessageProps {
   };
   author: string;
   isMe: boolean;
+  deliveredAt?: string | null;
+  readAt?: string | null;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ text, file, author, isMe }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ text, file, author, isMe, deliveredAt, readAt }) => {
   return (
     <div className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} mb-2`}>
       <div
@@ -41,7 +43,20 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ text, file, author, isMe }) =
         ) : (
           <span className="text-[15px] leading-relaxed break-words">{text}</span>
         )}
-        <span className="text-xs text-slate-400 mt-1 text-right font-medium" style={{ fontSize: '12px' }}>{author}</span>
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs text-slate-400 font-medium" style={{ fontSize: '12px' }}>{author}</span>
+          {isMe ? (
+            <div className="text-xs text-slate-300" style={{ fontSize: '11px' }}>
+              {readAt ? (
+                <span title={`Read at ${new Date(readAt).toLocaleString()}`}>✓✓</span>
+              ) : deliveredAt ? (
+                <span title={`Delivered at ${new Date(deliveredAt).toLocaleString()}`}>✓</span>
+              ) : (
+                <span>⏳</span>
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

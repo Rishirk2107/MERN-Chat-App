@@ -66,12 +66,48 @@ module.exports = function initSockets(io) {
         const userId = await resolveUserIdentifier(userIdentifier);
         const userDoc = await User.findOne({ userid: userId }, { name: 1, username: 1 });
         const displayName = userDoc ? (userDoc.username || userDoc.name) : (typeof user === 'string' ? user : (user && user.name) || (user && user.username) || String(user));
-        const mes = new Message({ userId: userId, user: displayName, message: message, room: room });
+        const mes = new Message({ userId: userId, user: displayName, message: message, room: room, senderId: userId });
         const newmes = await mes.save();
-        console.log(newmes);
-        socket.broadcast.to(room).emit('message', message, displayName);
+        console.log('Saved message', newmes.messageId || newmes._id);
+        // emit to entire room including sender so clients receive canonical message with messageId
+        io.to(room).emit('message', newmes);
       } catch (error) {
         console.log('Error at sendMessage', error);
+      }
+    });
+
+    // delivered acknowledgement from client
+    socket.on('messageReceived', async (room, messageId, userId) => {
+      try {
+        if (!messageId) return;
+        const updated = await Message.findOneAndUpdate({ messageId }, { $set: { deliveredAt: new Date() } }, { new: true });
+        if (updated) {
+          io.to(room).emit('messageStatus', { messageId: updated.messageId, deliveredAt: updated.deliveredAt, readAt: updated.readAt });
+        }
+      } catch (err) {
+        console.log('Error updating deliveredAt', err);
+      }
+    });
+
+    // read acknowledgement from client
+    socket.on('messageRead', async (room, messageId, userId) => {
+      try {
+        if (!messageId) return;
+        const updated = await Message.findOneAndUpdate({ messageId }, { $set: { readAt: new Date() } }, { new: true });
+        if (updated) {
+          io.to(room).emit('messageStatus', { messageId: updated.messageId, deliveredAt: updated.deliveredAt, readAt: updated.readAt });
+        }
+      } catch (err) {
+        console.log('Error updating readAt', err);
+      }
+    });
+
+    // typing indicator
+    socket.on('typing', (room, userDisplay) => {
+      try {
+        socket.broadcast.to(room).emit('typing', { user: userDisplay });
+      } catch (err) {
+        console.log('Error broadcasting typing', err);
       }
     });
 

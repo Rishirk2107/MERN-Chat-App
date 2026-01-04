@@ -135,6 +135,20 @@ const messageSchema = new mongoose.Schema({
     enum: ["text", "file"],
     default: "text"
   },
+  
+    // unique message identifier (stringified ObjectId)
+    messageId: {
+        type: String,
+        default: () => new mongoose.Types.ObjectId().toString(),
+        index: true,
+        unique: true
+    },
+
+    // numeric sender id for reliable comparisons
+    senderId: {
+        type: Number,
+        required: false
+    },
 
   // only required for text messages
   message: {
@@ -153,6 +167,16 @@ const messageSchema = new mongoose.Schema({
     resourceType: { type: String },  // image, video, raw
     bytes: { type: Number }          // file size
   },
+
+    // delivery/read timestamps
+    deliveredAt: {
+        type: Date,
+        required: false
+    },
+    readAt: {
+        type: Date,
+        required: false
+    },
 
   createdAt: {
     type: Date,

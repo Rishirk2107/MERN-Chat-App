@@ -10,6 +10,8 @@ const AnonymousDiscussionPage: React.FC = () => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
   const [fileUploading, setFileUploading] = useState(false);
+  const [typingUser, setTypingUser] = useState<string | null>(null);
+  const typingTimeoutRef = useRef<number | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -27,15 +29,49 @@ const AnonymousDiscussionPage: React.FC = () => {
     api.post('/senddata', { roomid: room, userid }).then(response => {
       const data = response.data;
       if (data.messages) {
-        setMessages(data.messages.map((m: any) => ({ type: m.type || 'text', message: m.message, file: m.file, user: m.user, createdAt: m.createdAt })));
+        const loaded = data.messages.map((m: any) => ({ type: m.type || 'text', message: m.message, file: m.file, user: m.user, createdAt: m.createdAt, messageId: m.messageId, senderId: m.senderId, deliveredAt: m.deliveredAt, readAt: m.readAt }));
+        setMessages(loaded);
+        setTimeout(() => {
+          loaded.forEach((m: any) => {
+            try {
+              if (m.messageId && String(m.senderId) !== String(userid)) socketRef.current?.emit('messageRead', room, m.messageId, userid);
+            } catch (e) {}
+          });
+        }, 300);
       }
     }).catch(err => console.error('Error fetching messages', err));
 
-    socketRef.current.on('message', (msg: any, user: string) => {
+    socketRef.current.on('message', (msg: any) => {
       if (!msg) return;
-      if (typeof msg === 'string') setMessages(prev => [...prev, { type: 'text', message: msg, user }]);
-      else if (msg.type === 'file') setMessages(prev => [...prev, { type: 'file', file: msg.file, user }]);
-      else setMessages(prev => [...prev, { type: msg.type || 'text', message: msg.message || '', file: msg.file || null, user }]);
+      const incoming = msg;
+      setMessages(prev => {
+        let replaced = false;
+        const updated = prev.map((p) => {
+          if (!p.messageId && p.message && incoming.message && p.message === incoming.message && String(p.user) === String(incoming.user)) {
+            replaced = true;
+            return incoming;
+          }
+          return p;
+        });
+        if (!replaced) updated.push(incoming);
+        return updated;
+      });
+      try {
+        const mid = incoming.messageId || incoming._id || null;
+        if (mid) socketRef.current?.emit('messageReceived', room, mid, userid);
+      } catch (e) {}
+    });
+
+    socketRef.current.on('messageStatus', (status: any) => {
+      if (!status || !status.messageId) return;
+      setMessages(prev => prev.map(m => m.messageId === status.messageId ? { ...m, deliveredAt: status.deliveredAt, readAt: status.readAt } : m));
+    });
+
+    socketRef.current.on('typing', (payload: any) => {
+      if (!payload || !payload.user) return;
+      setTypingUser(payload.user);
+      if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = window.setTimeout(() => setTypingUser(null), 2500);
     });
 
     return () => {
@@ -65,16 +101,17 @@ const AnonymousDiscussionPage: React.FC = () => {
             const author = msg.user || (localStorage.getItem('name') || '');
             const isMe = author === (localStorage.getItem('name') || '');
             return (
-              <ChatMessage key={i} text={msg.message} file={msg.file} author={author} isMe={isMe} />
+              <ChatMessage key={i} text={msg.message} file={msg.file} author={author} isMe={isMe} deliveredAt={msg.deliveredAt} readAt={msg.readAt} />
             );
           })}
         </div>
       </div>
+      {typingUser ? (<div className="w-full text-sm text-slate-300 px-4 mb-2">{typingUser} is typing...</div>) : null}
       <div className="w-full flex items-center gap-2 px-4 py-3 bg-[#1f2933] shadow-lg rounded-xl mx-auto mb-4 max-w-2xl" style={{ boxShadow: '0 2px 8px 0 rgba(0,0,0,0.10)' }}>
         <input
           type="text"
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={(e) => { setMessage(e.target.value); const userStr = localStorage.getItem('user'); const user = userStr ? JSON.parse(userStr) : null; const name = (user ? (user.username || user.name) : '') || localStorage.getItem('username') || localStorage.getItem('name'); socketRef.current?.emit('typing', room, name); }}
           onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
           placeholder="Type a message"
           className="flex-1 bg-transparent text-[15px] text-slate-100 placeholder-slate-400 px-4 py-2 rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-600 transition"

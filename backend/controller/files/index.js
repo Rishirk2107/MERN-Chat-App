@@ -37,6 +37,7 @@ module.exports = function initFiles(app, io) {
 
       const mes = new Message({
         userId: Number(user) || null,
+        senderId: Number(user) || null,
         user: displayName,
         room: room,
         type: 'file',
@@ -52,7 +53,8 @@ module.exports = function initFiles(app, io) {
 
       const saved = await mes.save();
 
-      io.to(room).emit('message', { type: 'file', file: mes.file }, displayName);
+      // emit saved canonical message to room
+      io.to(room).emit('message', saved);
 
       return res.json({ Message: true, data: saved });
     } catch (error) {
