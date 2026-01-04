@@ -7,7 +7,6 @@ function generateRandomString(length = 25, charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ
     }
 
     if (usedStrings.has(randomString)) {
-        // Recursively call until a unique string is generated
         return generateRandomString(length, charset);
     } else {
         usedStrings.add(randomString);
