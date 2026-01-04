@@ -29,7 +29,6 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   // For mobile: track if chat is open
-  const [mobileChatOpen, setMobileChatOpen] = useState(false);
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
     const userid = localStorage.getItem('userid') || (user ? String(user.userid) : '') || '';

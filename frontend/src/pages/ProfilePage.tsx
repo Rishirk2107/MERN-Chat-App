@@ -20,29 +20,39 @@ const ProfilePage: React.FC = () => {
   const email = user ? (user.email || '') : '';
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-slate-100">
-      <div className="bg-slate-800 rounded-lg shadow-lg p-8 w-full max-w-md">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 bg-indigo-500 rounded-md flex items-center justify-center text-white font-bold text-2xl">{String((displayName || 'U')[0]).toUpperCase()}</div>
-          <div>
-            <div className="font-semibold text-lg">{displayName}</div>
-            <div className="text-xs text-slate-300">{username}</div>
+    <div className="min-h-screen bg-slate-900 text-slate-100">
+      <div className="max-w-5xl mx-auto w-full px-6 py-12">
+        <div className="bg-slate-800 rounded-lg shadow-lg p-8">
+          <div className="flex flex-col md:flex-row md:items-start md:gap-8">
+            <div className="flex-shrink-0 mb-6 md:mb-0">
+              <div className="w-28 h-28 bg-indigo-500 rounded-md flex items-center justify-center text-white font-bold text-3xl">{String((displayName || 'U')[0]).toUpperCase()}</div>
+            </div>
+
+            <div className="flex-1">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-2xl font-semibold">{displayName}</div>
+                  <div className="text-sm text-slate-400 mt-1">{username || '—'}</div>
+                </div>
+                <div className="mt-1 md:mt-0 flex gap-3">
+                  <button onClick={() => navigate(-1)} className="px-3 py-1 border border-slate-600 rounded text-sm bg-transparent">Back</button>
+                  <button onClick={handleLogout} className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm">Logout</button>
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <div className="text-sm text-slate-300 mb-4">Profile details</div>
+                <div className="grid grid-cols-2 gap-4 max-w-xl text-sm">
+                  <div className="text-slate-400">Name</div>
+                  <div className="text-slate-100">{displayName}</div>
+                  <div className="text-slate-400">Username</div>
+                  <div className="text-slate-100">{username || '—'}</div>
+                  <div className="text-slate-400">Email</div>
+                  <div className="text-slate-100">{email || '—'}</div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="mb-4">
-          <div className="text-sm text-slate-300 mb-2">Profile details</div>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="text-slate-400">Name</div>
-            <div className="text-slate-100">{displayName}</div>
-            <div className="text-slate-400">Username</div>
-            <div className="text-slate-100">{username || '—'}</div>
-            <div className="text-slate-400">Email</div>
-            <div className="text-slate-100">{email || '—'}</div>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 mt-6">
-          <button onClick={() => navigate(-1)} className="px-3 py-1 border border-slate-600 rounded text-sm">Back</button>
-          <button onClick={handleLogout} className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm">Logout</button>
         </div>
       </div>
     </div>
