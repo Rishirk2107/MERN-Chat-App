@@ -71,14 +71,18 @@ const CreatorDiscussionPage: React.FC = () => {
       </div>
       <div className="flex gap-2">
         <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-          placeholder="Type a message"
-          className="flex-1 p-2 border rounded"
-        />
-        <button onClick={sendMessage} className="px-4 py-2 bg-blue-600 text-white rounded">Send</button>
+  type="text"
+  value={message}
+  onChange={(e) => setMessage(e.target.value)}
+  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+  placeholder="Type a message"
+  className="flex-1 p-2 border rounded
+             bg-white text-black
+             placeholder-gray-400
+             focus:outline-none focus:ring-2 focus:ring-blue-500"
+/>
+
+        <button onClick={sendMessage} className="px-4 py-2 bg-blue-600 text-black rounded">Send</button>
       </div>
     </div>
   );

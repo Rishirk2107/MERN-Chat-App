@@ -6,6 +6,19 @@ import CreateGroupModal from './CreateGroupModal';
 // import ProfileModal from './ProfileModal';
 import toast from 'react-hot-toast';
 
+// Utility: detect mobile
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  React.useEffect(() => {
+    function onResize() {
+      setIsMobile(window.innerWidth <= 768);
+    }
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return isMobile;
+}
+
 type Room = { name: string; roomid: string; admin?: string };
 
 
@@ -14,6 +27,9 @@ const MainLayout: React.FC = () => {
   const [friends, setFriends] = useState<any[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const location = useLocation();
+  const isMobile = useIsMobile();
+  // For mobile: track if chat is open
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
     const userid = localStorage.getItem('userid') || (user ? String(user.userid) : '') || '';
@@ -47,13 +63,16 @@ const MainLayout: React.FC = () => {
   // derive header info from location
   let headerTitle = 'Select a chat';
   let currentRoomId = '';
+  let isChatRoute = false;
   if (location.pathname.startsWith('/app/friends/chat/')) {
+    isChatRoute = true;
     const parts = location.pathname.split('/');
     const friendId = decodeURIComponent(parts[parts.length - 1]);
     // Find friend by id
     const friend = friends.find(f => String(f.id) === String(friendId));
     headerTitle = friend ? (friend.name || friend.username || String(friend.id)) : friendId;
   } else if (location.pathname.startsWith('/app/group/room/')) {
+    isChatRoute = true;
     const parts = location.pathname.split('/');
     const rid = parts[parts.length - 1];
     currentRoomId = rid;
@@ -84,53 +103,142 @@ const MainLayout: React.FC = () => {
 
 
 
+  // Mobile: show only sidebar if not in chat, only chat if in chat
+  if (isMobile) {
+    // If on a chat route, show chat interface, else show sidebar
+    return (
+      <div className="flex h-screen bg-gradient-to-br from-blue-800 via-blue-600 to-blue-900 text-slate-100 relative">
+        {/* Sidebar (lists) */}
+        {!isChatRoute && (
+          <aside className="w-full bg-white/10 backdrop-blur-lg border-b border-slate-700 flex flex-col shadow-xl z-10">
+            <div className="overflow-auto">
+              <div className="p-6 border-b border-slate-700 flex items-center gap-2">
+                <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-full p-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7 text-white">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-6a2.25 2.25 0 01-2.25-2.25V6.75" />
+                  </svg>
+                </div>
+                <div className="text-2xl font-bold text-indigo-400 tracking-wide">Chat App</div>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h5 className="text-base font-semibold text-slate-200">Friends</h5>
+                  <button onClick={() => navigate('/app/friends')} className="ml-2 p-2 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow hover:scale-105 transition-transform duration-150" title="Add / Search Friends">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {friends.map((f) => (
+                    <Link key={String(f.id)} to={`/app/friends/chat/${encodeURIComponent(String(f.id))}`} className="text-sm text-slate-900 bg-white/70 hover:bg-blue-100 p-2 rounded-lg shadow transition">{f.name || f.username || String(f.id)}</Link>
+                  ))}
+                </div>
+                <h5 className="text-base font-semibold mt-8 mb-4 text-slate-200">Groups</h5>
+                <div className="flex flex-col gap-2">
+                  {rooms.map(r => (
+                    <Link key={r.roomid} to={`/app/group/room/${r.roomid}`} className="text-sm text-slate-900 bg-white/70 hover:bg-purple-100 p-2 rounded-lg shadow transition">{r.name}</Link>
+                  ))}
+                  <button onClick={() => setShowCreate(true)} className="text-sm text-slate-900 bg-white/70 hover:bg-blue-100 p-2 rounded-lg shadow text-left transition">+ Create</button>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-slate-700">
+              <div onClick={() => navigate('/app/profile')} className="cursor-pointer bg-gradient-to-br from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 p-3 rounded-lg flex items-center gap-3 shadow-lg transition" id="profile-area">
+                <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center text-blue-700 font-bold text-lg shadow">{(user && (user.username || user.name) ? String((user.username || user.name)[0]).toUpperCase() : 'U')}</div>
+                <div className="flex-1 text-sm text-white">
+                  <div className="font-semibold">{user ? (user.username || user.name) : 'Unknown'}</div>
+                  <div className="text-xs text-blue-200">Profile</div>
+                </div>
+              </div>
+            </div>
+            <CreateGroupModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={async () => {
+              try {
+                const res = await api.post('/admin/rooms', { userid });
+                setRooms(res.data.rooms || []);
+              } catch (err) { console.error(err); }
+            }} />
+          </aside>
+        )}
+        {/* Chat interface (main) */}
+        {isChatRoute && (
+          <main className="flex-1 flex flex-col bg-white/10 backdrop-blur-xl absolute inset-0 z-20">
+            <header className="bg-white/20 backdrop-blur-lg border-b border-slate-700 p-6 flex items-center gap-4 shadow">
+              <button onClick={() => navigate(-1)} className="p-2 rounded-full bg-blue-600 text-white shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <h2 className="text-2xl font-bold text-blue-700 drop-shadow-lg">{headerTitle}</h2>
+            </header>
+            <section className="flex-1 overflow-hidden">
+              <div className="h-full overflow-auto p-2">
+                <Outlet />
+              </div>
+            </section>
+          </main>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop: show both sidebar and chat
   return (
-    <div className="flex h-screen bg-slate-900 text-slate-100">
-      <aside className="w-72 bg-slate-800 border-r border-slate-700 flex flex-col">
+    <div className="flex h-screen bg-gradient-to-br from-blue-800 via-blue-600 to-blue-900 text-slate-100">
+      {/* ...existing code for desktop sidebar and main... */}
+      <aside className="w-72 bg-white/10 backdrop-blur-lg border-r border-slate-700 flex flex-col shadow-xl">
+        {/* ...existing code... */}
         <div className="overflow-auto">
-          <div className="p-4 border-b border-slate-700">
-            <div className="text-xl font-bold text-indigo-400">Chat App</div>
-          </div>
-
-          <div className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h5 className="text-sm font-semibold text-slate-300">Friends</h5>
-            <button onClick={() => navigate('/app/friends')} className="ml-2 p-1 rounded hover:bg-slate-700 text-slate-100" title="Add / Search Friends">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+          <div className="p-6 border-b border-slate-700 flex items-center gap-2">
+            <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-full p-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7 text-white">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-6a2.25 2.25 0 01-2.25-2.25V6.75" />
               </svg>
-            </button>
+            </div>
+            <div className="text-2xl font-bold text-indigo-400 tracking-wide">Chat App</div>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h5 className="text-base font-semibold text-slate-200">Friends</h5>
+              <button onClick={() => navigate('/app/friends')} className="ml-2 p-2 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow hover:scale-105 transition-transform duration-150" title="Add / Search Friends">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
               {friends.map((f) => (
-                <Link key={String(f.id)} to={`/app/friends/chat/${encodeURIComponent(String(f.id))}`} className="text-sm text-slate-200 hover:bg-slate-700 p-2 rounded">{f.name || f.username || String(f.id)}</Link>
+                <Link key={String(f.id)} to={`/app/friends/chat/${encodeURIComponent(String(f.id))}`} className="text-sm text-slate-900 bg-white/70 hover:bg-blue-100 p-2 rounded-lg shadow transition">{f.name || f.username || String(f.id)}</Link>
               ))}
-          </div>
-
-          <h5 className="text-sm font-semibold mt-6 mb-2 text-slate-300">Groups</h5>
-          <div className="flex flex-col gap-2">
-            {rooms.map(r => (
-              <Link key={r.roomid} to={`/app/group/room/${r.roomid}`} className="text-sm text-slate-200 hover:bg-slate-700 p-2 rounded">{r.name}</Link>
-            ))}
-            <button onClick={() => setShowCreate(true)} className="text-sm text-slate-200 hover:bg-slate-700 p-2 rounded text-left">+ Create</button>
-          </div>
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-slate-700">
-          <div onClick={() => navigate('/app/profile')} className="cursor-pointer bg-slate-700 hover:bg-slate-600 p-3 rounded flex items-center gap-3" id="profile-area">
-            <div className="w-10 h-10 bg-indigo-500 rounded-md flex items-center justify-center text-white font-semibold">{(user && (user.username || user.name) ? String((user.username || user.name)[0]).toUpperCase() : 'U')}</div>
-            <div className="flex-1 text-sm text-slate-100">
-              <div className="font-semibold">{user ? (user.username || user.name) : 'Unknown'}</div>
-              <div className="text-xs text-slate-300">Profile</div>
+            </div>
+            <h5 className="text-base font-semibold mt-8 mb-4 text-slate-200">Groups</h5>
+            <div className="flex flex-col gap-2">
+              {rooms.map(r => (
+                <Link key={r.roomid} to={`/app/group/room/${r.roomid}`} className="text-sm text-slate-900 bg-white/70 hover:bg-purple-100 p-2 rounded-lg shadow transition">{r.name}</Link>
+              ))}
+              <button onClick={() => setShowCreate(true)} className="text-sm text-slate-900 bg-white/70 hover:bg-blue-100 p-2 rounded-lg shadow text-left transition">+ Create</button>
             </div>
           </div>
         </div>
+        <div className="p-6 border-t border-slate-700">
+          <div onClick={() => navigate('/app/profile')} className="cursor-pointer bg-gradient-to-br from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 p-3 rounded-lg flex items-center gap-3 shadow-lg transition" id="profile-area">
+            <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center text-blue-700 font-bold text-lg shadow">{(user && (user.username || user.name) ? String((user.username || user.name)[0]).toUpperCase() : 'U')}</div>
+            <div className="flex-1 text-sm text-white">
+              <div className="font-semibold">{user ? (user.username || user.name) : 'Unknown'}</div>
+              <div className="text-xs text-blue-200">Profile</div>
+            </div>
+          </div>
+        </div>
+        <CreateGroupModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={async () => {
+          try {
+            const res = await api.post('/admin/rooms', { userid });
+            setRooms(res.data.rooms || []);
+          } catch (err) { console.error(err); }
+        }} />
       </aside>
-
-      <main className="flex-1 flex flex-col bg-slate-900">
-        <header className="bg-slate-800 border-b border-slate-700 p-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-100">{headerTitle}</h2>
+      <main className="flex-1 flex flex-col bg-white/10 backdrop-blur-xl">
+        <header className="bg-white/20 backdrop-blur-lg border-b border-slate-700 p-6 flex items-center justify-between shadow">
+          <h2 className="text-2xl font-bold text-blue-700 drop-shadow-lg">{headerTitle}</h2>
           <div className="relative" ref={menuRef}>
             {isGroup && isAdmin && (
               <>
@@ -139,7 +247,6 @@ const MainLayout: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v.01M12 12v.01M12 18v.01" />
                   </svg>
                 </button>
-
                 {menuOpen && (
                   <div className="absolute right-0 mt-2 w-44 bg-slate-800 border border-slate-700 rounded shadow-lg z-50">
                     <ul className="divide-y divide-slate-700">
@@ -179,21 +286,12 @@ const MainLayout: React.FC = () => {
             )}
           </div>
         </header>
-
         <section className="flex-1 overflow-hidden">
-          <div className="h-full overflow-auto p-4">
+          <div className="h-full overflow-auto p-8">
             <Outlet />
           </div>
         </section>
       </main>
-      {/* ProfileModal removed */}
-
-      <CreateGroupModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={async () => {
-        try {
-          const res = await api.post('/admin/rooms', { userid });
-          setRooms(res.data.rooms || []);
-        } catch (err) { console.error(err); }
-      }} />
     </div>
   );
 };

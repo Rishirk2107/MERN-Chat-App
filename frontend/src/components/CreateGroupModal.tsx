@@ -58,7 +58,7 @@ const CreateGroupModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
       <div className="bg-slate-800 text-slate-100 rounded-lg shadow-lg w-full max-w-2xl z-50 p-6">
         <h3 className="text-lg font-semibold mb-4">Create Group</h3>
         <form onSubmit={submit} className="space-y-4">
-          <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Group name" className="w-full p-2 bg-slate-700 border border-slate-600 rounded text-slate-100" required />
+          <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Group name" className="w-full p-2 bg-gray-50 border border-gray-300 rounded text-gray-900" required />
 
           <div className="grid grid-cols-2 gap-2 max-h-56 overflow-auto">
             {users.map(u => (

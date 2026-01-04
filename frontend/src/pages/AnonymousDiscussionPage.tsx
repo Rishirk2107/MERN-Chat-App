@@ -77,6 +77,7 @@ const AnonymousDiscussionPage: React.FC = () => {
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
           placeholder="Type a message"
+          className="text-gray-900 bg-white px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button onClick={sendMessage}>Send</button>
       </div>
