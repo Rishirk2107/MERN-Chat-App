@@ -13,9 +13,32 @@ interface ChatMessageProps {
   isMe: boolean;
   deliveredAt?: string | null;
   readAt?: string | null;
+  // Add these for call messages
+  type?: string;
+  callStatus?: 'attended' | 'rejected' | 'missed';
+  createdAt?: string;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ text, file, author, isMe, deliveredAt, readAt }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ text, file, author, isMe, deliveredAt, readAt, type, callStatus, createdAt }) => {
+  // Render call history message
+  if (type === 'call') {
+    // Accept callStatus from either prop or text (for legacy)
+    let status = callStatus || (typeof text === 'string' ? text : '');
+    let callText = '';
+    if (status === 'attended') callText = 'Call attended';
+    else if (status === 'rejected') callText = 'Call rejected';
+    else if (status === 'missed') callText = 'Missed call';
+    else callText = '';
+    return (
+      <div className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} mb-2`}>
+        <div className={`max-w-[60%] rounded-xl px-4 py-2 shadow-sm flex flex-col bg-yellow-100 text-yellow-900 border border-yellow-300`} style={{ borderRadius: '16px' }}>
+          <span className="font-semibold">📞 {callText || 'Call event'}</span>
+          {createdAt && <span className="text-xs text-slate-500 mt-1">{new Date(createdAt).toLocaleString()}</span>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} mb-2`}>
       <div

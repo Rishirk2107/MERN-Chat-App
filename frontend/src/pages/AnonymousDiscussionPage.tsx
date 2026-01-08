@@ -29,7 +29,19 @@ const AnonymousDiscussionPage: React.FC = () => {
     api.post('/senddata', { roomid: room, userid }).then(response => {
       const data = response.data;
       if (data.messages) {
-        const loaded = data.messages.map((m: any) => ({ type: m.type || 'text', message: m.message, file: m.file, user: m.user, createdAt: m.createdAt, messageId: m.messageId, senderId: m.senderId, deliveredAt: m.deliveredAt, readAt: m.readAt }));
+        const loaded = data.messages.map((m: any) => ({
+          type: m.type || 'text',
+          message: m.message,
+          file: m.file,
+          user: m.user,
+          userId: m.userId,
+          callStatus: m.callStatus,
+          createdAt: m.createdAt,
+          messageId: m.messageId,
+          senderId: m.senderId,
+          deliveredAt: m.deliveredAt,
+          readAt: m.readAt
+        }));
         setMessages(loaded);
         setTimeout(() => {
           loaded.forEach((m: any) => {

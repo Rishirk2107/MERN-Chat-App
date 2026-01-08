@@ -45,7 +45,19 @@ const PrivateChatPage: React.FC = () => {
     api.post('/senddata', { roomid: roomId, userid: me }).then(response => {
       const data = response.data;
       if (data.messages) {
-        const loaded = data.messages.map((m: any) => ({ type: m.type || 'text', message: m.message, file: m.file, user: m.user, createdAt: m.createdAt, messageId: m.messageId, senderId: m.senderId, deliveredAt: m.deliveredAt, readAt: m.readAt }));
+        const loaded = data.messages.map((m: any) => ({
+          type: m.type || 'text',
+          message: m.message,
+          file: m.file,
+          user: m.user,
+          userId: m.userId,
+          callStatus: m.callStatus,
+          createdAt: m.createdAt,
+          messageId: m.messageId,
+          senderId: m.senderId,
+          deliveredAt: m.deliveredAt,
+          readAt: m.readAt
+        }));
         setMessages(loaded);
         // mark messages as read for those not sent by me
         setTimeout(() => {
@@ -109,10 +121,30 @@ const PrivateChatPage: React.FC = () => {
       <div className="flex-1 overflow-auto px-0 py-6 md:px-8 md:py-8" style={{ minHeight: 0 }}>
         <div className="flex flex-col gap-3">
           {messages.map((msg, i) => {
-            const author = msg.user || myName;
-            const isMe = String(author) === String(myName);
+            // For call messages, show display name for userId if possible
+            let author = msg.user || myName;
+            if (msg.type === 'call') {
+              // If user is a userId, map to display name
+              if (!isNaN(Number(msg.user)) && user && String(user.userid) === String(msg.user)) {
+                author = user.username || user.name || myName;
+              } else if (!isNaN(Number(msg.user)) && friend) {
+                author = friend;
+              }
+            }
+            const isMe = String(msg.userId || msg.user) === String(me);
             return (
-              <ChatMessage key={i} text={msg.message} file={msg.file} author={author} isMe={isMe} deliveredAt={msg.deliveredAt} readAt={msg.readAt} />
+              <ChatMessage
+                key={i}
+                text={msg.message}
+                file={msg.file}
+                author={author}
+                isMe={isMe}
+                deliveredAt={msg.deliveredAt}
+                readAt={msg.readAt}
+                type={msg.type}
+                callStatus={msg.callStatus}
+                createdAt={msg.createdAt}
+              />
             );
           })}
         </div>

@@ -66,7 +66,7 @@ async function sendData(req, res) {
     const { email, userid } = req.body;
     const userId = req.userid || userid || await resolveUserIdentifier(email);
     console.log(req.body.roomid);
-    const messages = await Message.find({ room: req.body.roomid }, { _id: 0, message: 1, user: 1, userId:1, type:1, file:1, createdAt:1, messageId:1, senderId:1, deliveredAt:1, readAt:1 }).sort({ createdAt: 1 });
+    const messages = await Message.find({ room: req.body.roomid }, { _id: 0, message: 1, user: 1, userId:1, type:1, callStatus:1, file:1, createdAt:1, messageId:1, senderId:1, deliveredAt:1, readAt:1 }).sort({ createdAt: 1 });
     const userDoc = await User.findOne({ userid: userId }, { _id: 0, name: 1, username:1 });
     console.log(userDoc);
     res.json({ user: userDoc ? (userDoc.username || userDoc.name) : null, messages: messages });

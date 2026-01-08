@@ -160,6 +160,20 @@ module.exports = function initSockets(io) {
 
     socket.on('webrtc-hangup', (room, from) => {
       try {
+        // Store missed call event (if not attended or rejected)
+        // This is a simple version; you may want to check if an attended/rejected call already exists for this room/recently
+        try {
+          const callMsg = new Message({
+            userId: from,
+            user: from,
+            room: room,
+            type: 'call',
+            callStatus: 'missed',
+          });
+          callMsg.save();
+        } catch (err) {
+          console.log('Error saving missed call message', err);
+        }
         if (socket.rooms && socket.rooms.has(room)) {
           socket.to(room).emit('webrtc-hangup', from);
         } else {
@@ -190,6 +204,19 @@ module.exports = function initSockets(io) {
       try {
         const socketsInRoom = await io.in(room).allSockets();
         console.log('webrtc-accept received', { from, room, payload, roomCount: socketsInRoom.size });
+        // Store attended call event
+        try {
+          const callMsg = new Message({
+            userId: from,
+            user: from,
+            room: room,
+            type: 'call',
+            callStatus: 'attended',
+          });
+          await callMsg.save();
+        } catch (err) {
+          console.log('Error saving attended call message', err);
+        }
         if (socket.rooms && socket.rooms.has(room)) {
           socket.to(room).emit('webrtc-accept', payload, from);
           console.log('webrtc-accept relayed to room', room);
@@ -205,6 +232,19 @@ module.exports = function initSockets(io) {
       try {
         const socketsInRoom = await io.in(room).allSockets();
         console.log('webrtc-decline received', { from, room, payload, roomCount: socketsInRoom.size });
+        // Store rejected call event
+        try {
+          const callMsg = new Message({
+            userId: from,
+            user: from,
+            room: room,
+            type: 'call',
+            callStatus: 'rejected',
+          });
+          await callMsg.save();
+        } catch (err) {
+          console.log('Error saving rejected call message', err);
+        }
         if (socket.rooms && socket.rooms.has(room)) {
           socket.to(room).emit('webrtc-decline', payload, from);
           console.log('webrtc-decline relayed to room', room);

@@ -129,12 +129,25 @@ const messageSchema = new mongoose.Schema({
     required: true
   },
 
-  // message type: text or file
-  type: {
-    type: String,
-    enum: ["text", "file"],
-    default: "text"
-  },
+    // message type: text, file, or call
+    type: {
+        type: String,
+        enum: ["text", "file", "call"],
+        default: "text"
+    },
+    // for call messages: attended, rejected, missed
+    callStatus: {
+        type: String,
+        enum: ["attended", "rejected", "missed"],
+        required: function () {
+            return this.type === "call";
+        },
+    },
+    // optional: call duration in seconds
+    callDuration: {
+        type: Number,
+        required: false
+    },
   
     // unique message identifier (stringified ObjectId)
     messageId: {
