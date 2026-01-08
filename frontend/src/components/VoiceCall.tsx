@@ -109,6 +109,12 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
 
       const onHangup = (from: string) => {
         if (from === me) return;
+        // If receiver has incoming call but not yet inCall, clear incoming UI
+        if (!inCall && incoming) {
+          setIncoming(null);
+          setCalling(false);
+          return;
+        }
         endCall();
         setCalling(false);
 
@@ -310,7 +316,10 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
       {!inCall ? (
         <>
           {calling ? (
-            <div className="px-3 py-1 bg-blue-500 text-white rounded">Calling...</div>
+            <>
+              <div className="px-3 py-1 bg-blue-500 text-white rounded">Calling...</div>
+              <button onClick={endCall} className="px-3 py-1 bg-red-600 text-white rounded ml-2">Hang Up</button>
+            </>
           ) : (
             <button onClick={startCall} className="px-3 py-1 bg-green-600 text-white rounded">Start Call</button>
           )}
