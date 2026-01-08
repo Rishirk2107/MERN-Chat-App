@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import io, { Socket } from 'socket.io-client';
 import api from '../utils/api';
 import ChatMessage from '../components/ChatMessage';
+import VoiceCall from '../components/VoiceCall';
 import '../assets/styles.css';
 
 const PrivateChatPage: React.FC = () => {
@@ -20,6 +21,7 @@ const PrivateChatPage: React.FC = () => {
   const user = userStr ? JSON.parse(userStr) : null;
   const me = localStorage.getItem('userid') || (user ? String(user.userid) : '') || '';
   const myName = (user ? (user.username || user.name) : '') || localStorage.getItem('username') || localStorage.getItem('name') || '';
+  const [socketConnected, setSocketConnected] = useState(false);
 
   // deterministic room id for DM
   const roomId = React.useMemo(() => {
@@ -32,7 +34,13 @@ const PrivateChatPage: React.FC = () => {
   useEffect(() => {
     if (!me || !friend) return;
     socketRef.current = io(import.meta.env.VITE_API_URL || 'http://localhost:3000');
-    socketRef.current.emit('joinRoom', roomId, me);
+    
+    // Wait for socket to connect
+    socketRef.current.on('connect', () => {
+      console.log('[PrivateChatPage] Socket connected');
+      setSocketConnected(true);
+      socketRef.current?.emit('joinRoom', roomId, me);
+    });
 
     api.post('/senddata', { roomid: roomId, userid: me }).then(response => {
       const data = response.data;
@@ -113,6 +121,11 @@ const PrivateChatPage: React.FC = () => {
         <div className="w-full text-sm text-slate-300 px-4 mb-2">{typingUser} is typing...</div>
       ) : null}
       <div className="w-full flex items-center gap-2 px-4 py-3 bg-[#1f2933] shadow-lg rounded-xl mx-auto mb-4 max-w-2xl" style={{ boxShadow: '0 2px 8px 0 rgba(0,0,0,0.10)' }}>
+        {socketConnected ? (
+          <VoiceCall socketRef={socketRef} roomId={roomId} me={me} myName={myName} />
+        ) : (
+          <div className="text-slate-400 text-sm">Connecting...</div>
+        )}
         <input
           type="text"
           value={message}

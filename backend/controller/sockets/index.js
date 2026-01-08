@@ -5,7 +5,7 @@ module.exports = function initSockets(io) {
   io.on('connection', (socket) => {
     console.log('A user connected', socket.id);
 
-    socket.on('joinRoom', async (room, user) => {
+    socket.on('joinRoom', async (room, user, cb) => {
       try {
         const result = await Room.findOne({ roomid: room });
         let userIdentifier = user;
@@ -13,12 +13,15 @@ module.exports = function initSockets(io) {
           userIdentifier = user.userid || user.email || user.username || user.id || JSON.stringify(user);
         }
         const userId = await resolveUserIdentifier(userIdentifier);
+        try { socket.data = socket.data || {}; socket.data.userid = userId; } catch(e){}
         if (result) {
           if (userId != null && (result.admin === userId || result.users.includes(userId))) {
             socket.join(room);
             console.log(`User ${userId} joined room ${room}`);
+            if (typeof cb === 'function') cb({ ok: true });
           } else {
             console.log('Unauthorised Access for', user, 'in room', room);
+            if (typeof cb === 'function') cb({ ok: false, reason: 'unauthorised' });
           }
         } else {
           if (room.startsWith('dm:')) {
@@ -38,22 +41,28 @@ module.exports = function initSockets(io) {
                 if (friend) {
                   socket.join(room);
                   console.log(`User ${userId} joined DM room ${room}`);
+                  if (typeof cb === 'function') cb({ ok: true });
                 } else {
                   console.log('DM join denied - not friends', aId, bId);
+                  if (typeof cb === 'function') cb({ ok: false, reason: 'not_friends' });
                 }
               } else {
                 console.log('DM join denied - user not part of DM', user, room);
+                if (typeof cb === 'function') cb({ ok: false, reason: 'not_part' });
               }
             } else {
               console.log('Invalid DM room format', room);
+              if (typeof cb === 'function') cb({ ok: false, reason: 'invalid_room' });
             }
           } else {
             socket.join(room);
             console.log(`User ${user} joined room ${room} (no auth check)`);
+            if (typeof cb === 'function') cb({ ok: true });
           }
         }
       } catch (error) {
         console.log('Error at joining room', error);
+        if (typeof cb === 'function') cb({ ok: false, reason: 'error' });
       }
     });
 
@@ -108,6 +117,102 @@ module.exports = function initSockets(io) {
         socket.broadcast.to(room).emit('typing', { user: userDisplay });
       } catch (err) {
         console.log('Error broadcasting typing', err);
+      }
+    });
+
+    // WebRTC signaling: offers, answers, ICE candidates and hangup
+    // Only relay if the socket has joined the target room (joinRoom enforces friend checks for DM rooms)
+    socket.on('webrtc-offer', (room, offer, from) => {
+      try {
+        if (socket.rooms && socket.rooms.has(room)) {
+          socket.to(room).emit('webrtc-offer', offer, from);
+        } else {
+          console.log('webrtc-offer denied - socket not in room', room, from);
+        }
+      } catch (err) {
+        console.log('Error relaying webrtc-offer', err);
+      }
+    });
+
+    socket.on('webrtc-answer', (room, answer, from) => {
+      try {
+        if (socket.rooms && socket.rooms.has(room)) {
+          socket.to(room).emit('webrtc-answer', answer, from);
+        } else {
+          console.log('webrtc-answer denied - socket not in room', room, from);
+        }
+      } catch (err) {
+        console.log('Error relaying webrtc-answer', err);
+      }
+    });
+
+    socket.on('webrtc-ice', (room, candidate, from) => {
+      try {
+        if (socket.rooms && socket.rooms.has(room)) {
+          socket.to(room).emit('webrtc-ice', candidate, from);
+        } else {
+          console.log('webrtc-ice denied - socket not in room', room, from);
+        }
+      } catch (err) {
+        console.log('Error relaying webrtc-ice', err);
+      }
+    });
+
+    socket.on('webrtc-hangup', (room, from) => {
+      try {
+        if (socket.rooms && socket.rooms.has(room)) {
+          socket.to(room).emit('webrtc-hangup', from);
+        } else {
+          console.log('webrtc-hangup denied - socket not in room', room, from);
+        }
+      } catch (err) {
+        console.log('Error relaying webrtc-hangup', err);
+      }
+    });
+
+    // invite / accept / decline flow for explicit incoming-call UI
+    socket.on('webrtc-invite', async (room, payload, from) => {
+      try {
+        const socketsInRoom = await io.in(room).allSockets();
+        console.log('webrtc-invite received', { from, room, payload, roomCount: socketsInRoom.size });
+        if (socket.rooms && socket.rooms.has(room)) {
+          socket.to(room).emit('webrtc-invite', payload, from);
+          console.log('webrtc-invite relayed to room', room);
+        } else {
+          console.log('webrtc-invite denied - socket not in room', room, from);
+        }
+      } catch (err) {
+        console.log('Error relaying webrtc-invite', err);
+      }
+    });
+
+    socket.on('webrtc-accept', async (room, payload, from) => {
+      try {
+        const socketsInRoom = await io.in(room).allSockets();
+        console.log('webrtc-accept received', { from, room, payload, roomCount: socketsInRoom.size });
+        if (socket.rooms && socket.rooms.has(room)) {
+          socket.to(room).emit('webrtc-accept', payload, from);
+          console.log('webrtc-accept relayed to room', room);
+        } else {
+          console.log('webrtc-accept denied - socket not in room', room, from);
+        }
+      } catch (err) {
+        console.log('Error relaying webrtc-accept', err);
+      }
+    });
+
+    socket.on('webrtc-decline', async (room, payload, from) => {
+      try {
+        const socketsInRoom = await io.in(room).allSockets();
+        console.log('webrtc-decline received', { from, room, payload, roomCount: socketsInRoom.size });
+        if (socket.rooms && socket.rooms.has(room)) {
+          socket.to(room).emit('webrtc-decline', payload, from);
+          console.log('webrtc-decline relayed to room', room);
+        } else {
+          console.log('webrtc-decline denied - socket not in room', room, from);
+        }
+      } catch (err) {
+        console.log('Error relaying webrtc-decline', err);
       }
     });
 
