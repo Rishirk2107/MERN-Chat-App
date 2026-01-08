@@ -31,6 +31,8 @@ const anonymousController = require('./controller/anonymous');
 const friendsController = require('./controller/friends');
 const initSockets = require('./controller/sockets');
 const initFiles = require('./controller/files');
+// Health check endpoint
+const healthRouter = require('./controller/health');
 
 // Wire routes to controllers
 app.post('/user/signup', usersController.signup);
@@ -68,7 +70,7 @@ initSockets(io);
 
 // Initialize file upload routes (needs access to io)
 initFiles(app, io);
-
+app.use('/', healthRouter);
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
