@@ -128,17 +128,30 @@ const MainLayout: React.FC = () => {
                     </svg>
                   </button>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="mb-3">
+                  <input
+                    placeholder="Search friends"
+                    className="w-full px-3 py-2 rounded bg-white/5 text-slate-100 placeholder:text-slate-400 focus:outline-none"
+                    onChange={() => { /* optional filter */ }}
+                  />
+                </div>
+                <div className="flex flex-col gap-3 mt-3">
                   {friends.map((f) => (
-                    <Link key={String(f.id)} to={`/app/friends/chat/${encodeURIComponent(String(f.id))}`} className="text-sm text-slate-900 bg-white/70 hover:bg-blue-100 p-2 rounded-lg shadow transition">{f.name || f.username || String(f.id)}</Link>
+                    <Link key={String(f.id)} to={`/app/friends/chat/${encodeURIComponent(String(f.id))}`} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition">
+                      <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">{(f.name || f.username || String(f.id))[0]?.toUpperCase()}</div>
+                      <div className="text-sm text-slate-100">{f.name || f.username || String(f.id)}</div>
+                    </Link>
                   ))}
                 </div>
                 <h5 className="text-base font-semibold mt-8 mb-4 text-slate-200">Groups</h5>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   {rooms.map(r => (
-                    <Link key={r.roomid} to={`/app/group/room/${r.roomid}`} className="text-sm text-slate-900 bg-white/70 hover:bg-purple-100 p-2 rounded-lg shadow transition">{r.name}</Link>
+                    <Link key={r.roomid} to={`/app/group/room/${r.roomid}`} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition">
+                      <div className="w-9 h-9 bg-slate-700 rounded-full flex items-center justify-center text-white">{(r.name || 'G')[0]?.toUpperCase()}</div>
+                      <div className="text-sm text-slate-100">{r.name}</div>
+                    </Link>
                   ))}
-                  <button onClick={() => setShowCreate(true)} className="text-sm text-slate-900 bg-white/70 hover:bg-blue-100 p-2 rounded-lg shadow text-left transition">+ Create</button>
+                  <button onClick={() => setShowCreate(true)} className="text-sm text-slate-100/90 bg-transparent hover:bg-white/5 px-3 py-2 rounded-lg text-left transition">+ Create</button>
                 </div>
               </div>
             </div>
@@ -205,17 +218,40 @@ const MainLayout: React.FC = () => {
                 </svg>
               </button>
             </div>
-            <div className="flex flex-col gap-2">
-              {friends.map((f) => (
-                <Link key={String(f.id)} to={`/app/friends/chat/${encodeURIComponent(String(f.id))}`} className="text-sm text-slate-900 bg-white/70 hover:bg-blue-100 p-2 rounded-lg shadow transition">{f.name || f.username || String(f.id)}</Link>
-              ))}
+            <div className="mb-3">
+              <input
+                placeholder="Search friends"
+                className="w-full px-3 py-2 rounded bg-white/5 text-slate-100 placeholder:text-slate-400 focus:outline-none"
+                onChange={() => { /* optional filter */ }}
+              />
+            </div>
+            <div className="flex flex-col gap-2 mt-3">
+              {friends.map((f) => {
+                const isActive = location.pathname === `/app/friends/chat/${encodeURIComponent(String(f.id))}`;
+                return (
+                  <Link key={String(f.id)} to={`/app/friends/chat/${encodeURIComponent(String(f.id))}`}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition font-medium ${isActive ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' : 'bg-white/5 hover:bg-white/10 text-slate-100'}`}
+                  >
+                    <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">{(f.name || f.username || String(f.id))[0]?.toUpperCase()}</div>
+                    <div className="text-sm">{f.name || f.username || String(f.id)}</div>
+                  </Link>
+                );
+              })}
             </div>
             <h5 className="text-base font-semibold mt-8 mb-4 text-slate-200">Groups</h5>
             <div className="flex flex-col gap-2">
-              {rooms.map(r => (
-                <Link key={r.roomid} to={`/app/group/room/${r.roomid}`} className="text-sm text-slate-900 bg-white/70 hover:bg-purple-100 p-2 rounded-lg shadow transition">{r.name}</Link>
-              ))}
-              <button onClick={() => setShowCreate(true)} className="text-sm text-slate-900 bg-white/70 hover:bg-blue-100 p-2 rounded-lg shadow text-left transition">+ Create</button>
+              {rooms.map(r => {
+                const isActive = location.pathname === `/app/group/room/${r.roomid}`;
+                return (
+                  <Link key={r.roomid} to={`/app/group/room/${r.roomid}`}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition font-medium ${isActive ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg' : 'bg-white/5 hover:bg-white/10 text-slate-100'}`}
+                  >
+                    <div className="w-9 h-9 bg-slate-700 rounded-full flex items-center justify-center text-white">{(r.name || 'G')[0]?.toUpperCase()}</div>
+                    <div className="text-sm">{r.name}</div>
+                  </Link>
+                );
+              })}
+              <button onClick={() => setShowCreate(true)} className="text-sm text-slate-100/90 bg-transparent hover:bg-white/5 px-3 py-2 rounded-lg text-left transition mt-2">+ Create</button>
             </div>
           </div>
         </div>

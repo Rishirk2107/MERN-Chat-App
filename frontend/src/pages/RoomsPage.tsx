@@ -37,15 +37,21 @@ const RoomsPage: React.FC = () => {
   };
 
   return (
-    <div className="page">
-      <h2>Group Chats</h2>
-      <div>
-        {rooms.length === 0 && <p>No rooms found.</p>}
-        {rooms.map(r => (
-          <button key={r.roomid} className="room-button" onClick={() => openRoom(r.roomid)}>
-            {r.name}
-          </button>
-        ))}
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-800 via-blue-600 to-blue-900 text-slate-100 p-6">
+      <div className="w-full max-w-xl bg-white/5 rounded-xl p-8 shadow-lg backdrop-blur-md">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">Group Chats</h2>
+          <button onClick={() => navigate('/create-group')} className="px-4 py-2 bg-green-600 rounded text-white hover:bg-green-700">+ New Group</button>
+        </div>
+        <div className="flex flex-col gap-4">
+          {rooms.length === 0 && <div className="text-slate-300">No groups found.</div>}
+          {rooms.map(r => (
+            <button key={r.roomid} className="flex items-center gap-4 p-4 rounded-lg bg-white/10 hover:bg-white/20 transition text-left" onClick={() => openRoom(r.roomid)}>
+              <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-white font-bold text-lg">{(r.name || 'G')[0]?.toUpperCase()}</div>
+              <div className="text-lg text-slate-100">{r.name}</div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
