@@ -303,34 +303,54 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
   };
 
   return (
-    <div className="flex flex-col items-start gap-2">
+    <>
       <audio ref={remoteAudioRef} autoPlay />
 
+      {/* Incoming call modal */}
       {incoming ? (
-        <div className="flex items-center gap-2">
-          <div className="px-3 py-1 bg-yellow-500 text-black rounded">Incoming call from {incoming.name}</div>
-          <button onClick={acceptCall} className="px-3 py-1 bg-green-600 text-white rounded">Accept</button>
-          <button onClick={declineCall} className="px-3 py-1 bg-red-600 text-white rounded">Decline</button>
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="absolute inset-0 bg-black/50" onClick={declineCall} />
+          <div className="relative bg-white dark:bg-slate-800 text-black dark:text-white rounded-lg p-6 shadow-lg w-full max-w-sm z-10">
+            <div className="text-lg font-semibold mb-3">Incoming call</div>
+            <div className="mb-4">📞 {incoming.name} is calling you</div>
+            <div className="flex gap-3 justify-end">
+              <button onClick={declineCall} className="px-4 py-2 bg-red-600 text-white rounded">Decline</button>
+              <button onClick={acceptCall} className="px-4 py-2 bg-green-600 text-white rounded">Accept</button>
+            </div>
+          </div>
         </div>
       ) : null}
-      {!inCall ? (
-        <>
-          {calling ? (
-            <>
-              <div className="px-3 py-1 bg-blue-500 text-white rounded">Calling...</div>
-              <button onClick={endCall} className="px-3 py-1 bg-red-600 text-white rounded ml-2">Hang Up</button>
-            </>
-          ) : (
-            <button onClick={startCall} className="px-3 py-1 bg-green-600 text-white rounded">Start Call</button>
-          )}
-        </>
-      ) : (
-        <>
-          <button onClick={endCall} className="px-3 py-1 bg-red-600 text-white rounded">Hang Up</button>
+
+      {/* Outgoing calling modal */}
+      {!incoming && calling && !inCall ? (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative bg-white dark:bg-slate-800 text-black dark:text-white rounded-lg p-5 shadow-lg w-full max-w-xs z-10 pointer-events-auto">
+            <div className="text-lg font-semibold mb-2">Calling...</div>
+            <div className="mb-4">Waiting for the other party to answer</div>
+            <div className="flex justify-end">
+              <button onClick={endCall} className="px-4 py-2 bg-red-600 text-white rounded">Hang Up</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Normal inline controls when not showing modals */}
+      {!incoming && !calling && !inCall ? (
+        <div className="flex items-center gap-2">
+          <button onClick={startCall} className="px-3 py-1 bg-green-600 text-white rounded">Start Call</button>
+        </div>
+      ) : null}
+
+      {/* Small fixed control while in a call */}
+      {inCall ? (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white rounded-lg p-3 shadow-lg flex items-center gap-2">
+          <div className="font-medium">In call</div>
           <button onClick={toggleMute} className="px-3 py-1 bg-slate-700 text-white rounded">{muted ? 'Unmute' : 'Mute'}</button>
-        </>
-      )}
-    </div>
+          <button onClick={endCall} className="px-3 py-1 bg-red-600 text-white rounded">Hang Up</button>
+        </div>
+      ) : null}
+    </>
   );
 };
 
