@@ -17,6 +17,7 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
   const [inCall, setInCall] = useState(false);
   const [muted, setMuted] = useState(false);
   const [calling, setCalling] = useState(false);
+  const iceCandidatesQueue = useRef<RTCIceCandidate[]>([]);
   // const [debug, setDebug] = useState<string[]>([]);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
 
     const attachHandlers = (socket: Socket) => {
       // attachedSocket = socket;
-      
+
       // Auto-join the room so receiver can receive invites
       if (!roomJoined) {
         socket.emit('joinRoom', roomId, me, () => {
@@ -45,6 +46,17 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
         await ensurePeerConnection();
         try {
           await pcRef.current!.setRemoteDescription(offer);
+          // Process any queued ICE candidates
+          while (iceCandidatesQueue.current.length > 0) {
+            const candidate = iceCandidatesQueue.current.shift();
+            if (candidate) {
+              try {
+                await pcRef.current!.addIceCandidate(candidate);
+              } catch (err) {
+                console.error('Error adding queued ICE candidate', err);
+              }
+            }
+          }
           const answer = await pcRef.current!.createAnswer();
           await pcRef.current!.setLocalDescription(answer);
           socket.emit('webrtc-answer', roomId, answer, me);
@@ -55,16 +67,7 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
         }
       };
 
-      const onInvite = (payload: any, from: string) => {
-        if (from === me) {
-          return;
-        }
-        const callerName = payload && payload.name ? payload.name : String(from);
-        setIncoming({ from, name: callerName });
-
-      };
-
-      const onAccept = async (from: string) => {
+      const onAccept = async (_payload: any, from: string) => {
         // the other user accepted our invite -> we should create offer
         if (from === me) return;
         try {
@@ -79,10 +82,9 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
         }
       };
 
-      const onDecline = (from: string) => {
+      const onDecline = (_payload: any, from: string) => {
         if (from === me) return;
         // remote declined our invite
-        setIncoming(null);
         setCalling(false);
         alert('Call declined');
       };
@@ -91,6 +93,17 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
         if (from === me) return;
         try {
           await pcRef.current?.setRemoteDescription(answer);
+          // Process any queued ICE candidates
+          while (iceCandidatesQueue.current.length > 0) {
+            const candidate = iceCandidatesQueue.current.shift();
+            if (candidate) {
+              try {
+                await pcRef.current!.addIceCandidate(candidate);
+              } catch (err) {
+                console.error('Error adding queued ICE candidate', err);
+              }
+            }
+          }
           setInCall(true);
           setCalling(false);
         } catch (err) {
@@ -101,7 +114,16 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
       const onIce = async (candidate: any, from: string) => {
         if (from === me) return;
         try {
-          if (candidate) await pcRef.current?.addIceCandidate(candidate);
+          if (candidate) {
+            // Only add candidate if we have a remote description
+            if (pcRef.current?.remoteDescription) {
+              await pcRef.current.addIceCandidate(candidate);
+            } else {
+              // Queue the candidate for later
+              console.log('[VoiceCall] Queueing ICE candidate (no remote description yet)');
+              iceCandidatesQueue.current.push(candidate);
+            }
+          }
         } catch (err) {
           console.error('Error adding remote ICE', err);
         }
@@ -109,21 +131,13 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
 
       const onHangup = (from: string) => {
         if (from === me) return;
-        // If receiver has incoming call but not yet inCall, clear incoming UI
-        if (!inCall && incoming) {
-          setIncoming(null);
-          setCalling(false);
-          return;
-        }
         endCall();
         setCalling(false);
-
       };
       socket.on('webrtc-offer', onOffer);
       socket.on('webrtc-answer', onAnswer);
       socket.on('webrtc-ice', onIce);
       socket.on('webrtc-hangup', onHangup);
-      socket.on('webrtc-invite', onInvite);
       socket.on('webrtc-accept', onAccept);
       socket.on('webrtc-decline', onDecline);
 
@@ -133,16 +147,15 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
           socket.off('webrtc-answer', onAnswer);
           socket.off('webrtc-ice', onIce);
           socket.off('webrtc-hangup', onHangup);
-          socket.off('webrtc-invite', onInvite);
           socket.off('webrtc-accept', onAccept);
           socket.off('webrtc-decline', onDecline);
-        } catch (e) {}
+        } catch (e) { }
       };
     };
 
     const tryAttach = () => {
       const s = socketRef.current;
-      
+
       if (s) {
         attachHandlers(s);
         if (pollTimer) {
@@ -178,10 +191,9 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
           s.off('webrtc-answer');
           s.off('webrtc-ice');
           s.off('webrtc-hangup');
-          s.off('webrtc-invite');
           s.off('webrtc-accept');
           s.off('webrtc-decline');
-        } catch (e) {}
+        } catch (e) { }
       }
       endCall();
     };
@@ -243,7 +255,7 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
         // Fallback in case callback never fires
         setTimeout(() => resolve(), 2000);
       });
-      sock.emit('webrtc-invite', roomId, { name: myName }, me);
+      sock.emit('webrtc-invite', roomId, { name: myName, roomId: roomId }, me);
     } catch (err) {
       console.error('startCall invite error', err);
       alert('Unable to send call invite');
@@ -253,7 +265,7 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
 
   const endCall = () => {
     try {
-      pcRef.current?.getSenders().forEach(s => { try { s.track?.stop(); } catch(e){} });
+      pcRef.current?.getSenders().forEach(s => { try { s.track?.stop(); } catch (e) { } });
       pcRef.current?.close();
     } catch (err) {
     }
@@ -268,7 +280,6 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
     }
     setInCall(false);
     setCalling(false);
-    setIncoming(null);
   };
 
   const toggleMute = () => {
@@ -278,51 +289,14 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
     setMuted(!muted);
   };
 
-  const [incoming, setIncoming] = useState<{ from: string; name: string } | null>(null);
 
-  const acceptCall = async () => {
-    if (!socketRef.current) {
-      return;
-    }
-    try {
-      await ensurePeerConnection();
-      // notify caller that we accept — caller will create offer
-      socketRef.current.emit('webrtc-accept', roomId, { from: me }, me);
-      setIncoming(null);
-    } catch (err) {
-      console.error('acceptCall error', err);
-    }
-  };
-
-  const declineCall = () => {
-    if (!socketRef.current || !incoming) {
-      return;
-    }
-    socketRef.current.emit('webrtc-decline', roomId, { from: me }, me);
-    setIncoming(null);
-  };
 
   return (
     <>
       <audio ref={remoteAudioRef} autoPlay />
 
-      {/* Incoming call modal */}
-      {incoming ? (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="absolute inset-0 bg-black/50" onClick={declineCall} />
-          <div className="relative bg-white dark:bg-slate-800 text-black dark:text-white rounded-lg p-6 shadow-lg w-full max-w-sm z-10">
-            <div className="text-lg font-semibold mb-3">Incoming call</div>
-            <div className="mb-4">📞 {incoming.name} is calling you</div>
-            <div className="flex gap-3 justify-end">
-              <button onClick={declineCall} className="px-4 py-2 bg-red-600 text-white rounded">Decline</button>
-              <button onClick={acceptCall} className="px-4 py-2 bg-green-600 text-white rounded">Accept</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {/* Outgoing calling modal */}
-      {!incoming && calling && !inCall ? (
+      {calling && !inCall ? (
         <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
           <div className="absolute inset-0 bg-black/40" />
           <div className="relative bg-white dark:bg-slate-800 text-black dark:text-white rounded-lg p-5 shadow-lg w-full max-w-xs z-10 pointer-events-auto">
@@ -336,7 +310,7 @@ const VoiceCall: React.FC<Props> = ({ socketRef, roomId, me, myName }) => {
       ) : null}
 
       {/* Normal inline controls when not showing modals */}
-      {!incoming && !calling && !inCall ? (
+      {!calling && !inCall ? (
         <div className="flex items-center gap-2">
           <button onClick={startCall} className="px-3 py-1 bg-green-600 text-white rounded">Start Call</button>
         </div>

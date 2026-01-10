@@ -19,9 +19,13 @@ import FriendsPage from './pages/FriendsPage';
 import PrivateChatPage from './pages/PrivateChatPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ProfilePage from './pages/ProfilePage';
+import { SocketProvider } from './contexts/SocketContext';
+import IncomingCallModal from './components/IncomingCallModal';
 
 const App: React.FC = () => {
   return (
+    <SocketProvider>
+      <IncomingCallModal />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/signup" element={<SignupPage />} />
@@ -30,7 +34,7 @@ const App: React.FC = () => {
         <Route path="/rooms" element={<RoomsPage />} />
         <Route path="/group-route" element={<GroupRoutePage />} />
         <Route path="/app/profile" element={<ProfilePage />} />
-        <Route path="/app/*" element={<MainLayout />}> 
+        <Route path="/app/*" element={<MainLayout />}>
           <Route path="friends" element={<FriendsPage />} />
           <Route path="friends/chat/:friendEmail" element={<PrivateChatPage />} />
           <Route path="group/room/:roomId" element={<CreatorDiscussionPage />} />
@@ -46,6 +50,7 @@ const App: React.FC = () => {
         <Route path="/group/room/:roomId" element={<CreatorDiscussionPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+    </SocketProvider>
   );
 };
 

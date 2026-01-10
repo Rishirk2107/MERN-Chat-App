@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import io, { Socket } from 'socket.io-client';
 import api from '../utils/api';
 import ChatMessage from '../components/ChatMessage';
 import VoiceCall from '../components/VoiceCall';
+import { useSocket } from '../contexts/SocketContext';
 import '../assets/styles.css';
 
 const PrivateChatPage: React.FC = () => {
@@ -14,8 +14,10 @@ const PrivateChatPage: React.FC = () => {
   const [fileUploading, setFileUploading] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
-  const socketRef = useRef<Socket | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Use global socket from context
+  const { socketRef } = useSocket();
 
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
@@ -32,15 +34,23 @@ const PrivateChatPage: React.FC = () => {
   }, [me, friend]);
 
   useEffect(() => {
-    if (!me || !friend) return;
-    socketRef.current = io(import.meta.env.VITE_API_URL || 'http://localhost:3000');
-    
+    if (!me || !friend || !socketRef.current) return;
+
+    const socket = socketRef.current;
+
     // Wait for socket to connect
-    socketRef.current.on('connect', () => {
+    const onConnect = () => {
       console.log('[PrivateChatPage] Socket connected');
       setSocketConnected(true);
-      socketRef.current?.emit('joinRoom', roomId, me);
-    });
+      socket.emit('joinRoom', roomId, me);
+    };
+
+    // Check if already connected
+    if (socket.connected) {
+      onConnect();
+    } else {
+      socket.on('connect', onConnect);
+    }
 
     api.post('/senddata', { roomid: roomId, userid: me }).then(response => {
       const data = response.data;
@@ -63,14 +73,14 @@ const PrivateChatPage: React.FC = () => {
         setTimeout(() => {
           loaded.forEach((m: any) => {
             try {
-              if (m.messageId && String(m.senderId) !== String(me)) socketRef.current?.emit('messageRead', roomId, m.messageId, me);
-            } catch (e) {}
+              if (m.messageId && String(m.senderId) !== String(me)) socket.emit('messageRead', roomId, m.messageId, me);
+            } catch (e) { }
           });
         }, 300);
       }
     }).catch(err => console.error('Error fetching DM messages', err));
 
-    socketRef.current.on('message', (msg: any) => {
+    const onMessage = (msg: any) => {
       if (!msg) return;
       const incoming = msg;
       setMessages(prev => {
@@ -88,26 +98,34 @@ const PrivateChatPage: React.FC = () => {
 
       try {
         const mid = incoming.messageId || incoming._id || null;
-        if (mid) socketRef.current?.emit('messageReceived', roomId, mid, me);
+        if (mid) socket.emit('messageReceived', roomId, mid, me);
       } catch (e) { }
-    });
+    };
 
-    socketRef.current.on('messageStatus', (status: any) => {
+    const onMessageStatus = (status: any) => {
       if (!status || !status.messageId) return;
       setMessages(prev => prev.map(m => m.messageId === status.messageId ? { ...m, deliveredAt: status.deliveredAt, readAt: status.readAt } : m));
-    });
+    };
 
-    socketRef.current.on('typing', (payload: any) => {
+    const onTyping = (payload: any) => {
       if (!payload || !payload.user) return;
       setTypingUser(payload.user);
       if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = window.setTimeout(() => setTypingUser(null), 2500);
-    });
+    };
+
+    socket.on('message', onMessage);
+    socket.on('messageStatus', onMessageStatus);
+    socket.on('typing', onTyping);
 
     return () => {
-      socketRef.current?.disconnect();
+      socket.off('connect', onConnect);
+      socket.off('message', onMessage);
+      socket.off('messageStatus', onMessageStatus);
+      socket.off('typing', onTyping);
+      // Note: We don't disconnect the socket as it's shared globally
     };
-  }, [me, friend, roomId]);
+  }, [me, friend, roomId, socketRef]);
 
   const sendMessage = () => {
     if (!message.trim() || !socketRef.current) return;
