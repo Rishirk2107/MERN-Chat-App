@@ -13,7 +13,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: ["http://localhost:5173","https://chat.rishinex.tech"],
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   }
 });
 
