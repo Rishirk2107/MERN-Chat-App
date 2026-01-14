@@ -7,21 +7,41 @@ const cors = require('cors');
 const path = require('path');
 const { authenticate} = require('./libs/auth/authenticate');
 
+dotenv.config();
+
 const app = express();
-app.use(cors());
+
+// CORS FIRST
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://chat.rishinex.tech",
+      "https://rishinex.tech",
+      "https://www.rishinex.tech"
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  })
+);
+
+app.options("*", cors());
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:5173","https://chat.rishinex.tech"],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    origin: [
+      "http://localhost:5173",
+      "https://chat.rishinex.tech",
+      "https://rishinex.tech"
+    ],
+    methods: ["GET", "POST"]
   }
 });
 
-// Serve static frontend (located in parent folder)
-app.use(express.static(path.join(__dirname, '..', 'front-end')));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-dotenv.config();
 // Import modular controllers
 const usersController = require('./controller/users');
 const roomsController = require('./controller/rooms');
