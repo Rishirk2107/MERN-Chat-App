@@ -156,7 +156,7 @@ const MainLayout: React.FC = () => {
               </div>
             </div>
             <div className="p-6 border-t border-slate-700">
-              <div onClick={() => navigate('/app/profile')} className="cursor-pointer bg-gradient-to-br from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 p-3 rounded-lg flex items-center gap-3 shadow-lg transition" id="profile-area">
+              <div onClick={() => navigate('/profile')} className="cursor-pointer bg-gradient-to-br from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 p-3 rounded-lg flex items-center gap-3 shadow-lg transition" id="profile-area">
                 <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center text-blue-700 font-bold text-lg shadow">{(user && (user.username || user.name) ? String((user.username || user.name)[0]).toUpperCase() : 'U')}</div>
                 <div className="flex-1 text-sm text-white">
                   <div className="font-semibold">{user ? (user.username || user.name) : 'Unknown'}</div>
@@ -256,7 +256,7 @@ const MainLayout: React.FC = () => {
           </div>
         </div>
         <div className="p-6 border-t border-slate-700">
-          <div onClick={() => navigate('/app/profile')} className="cursor-pointer bg-gradient-to-br from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 p-3 rounded-lg flex items-center gap-3 shadow-lg transition" id="profile-area">
+          <div onClick={() => navigate('/profile')} className="cursor-pointer bg-gradient-to-br from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 p-3 rounded-lg flex items-center gap-3 shadow-lg transition" id="profile-area">
             <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center text-blue-700 font-bold text-lg shadow">{(user && (user.username || user.name) ? String((user.username || user.name)[0]).toUpperCase() : 'U')}</div>
             <div className="flex-1 text-sm text-white">
               <div className="font-semibold">{user ? (user.username || user.name) : 'Unknown'}</div>

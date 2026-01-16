@@ -33,7 +33,7 @@ const App: React.FC = () => {
         <Route path="/login-admin" element={<LoginAdminPage />} />
         <Route path="/rooms" element={<RoomsPage />} />
         <Route path="/group-route" element={<GroupRoutePage />} />
-        <Route path="/app/profile" element={<ProfilePage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/app/*" element={<MainLayout />}>
           <Route path="friends" element={<FriendsPage />} />
           <Route path="friends/chat/:friendEmail" element={<PrivateChatPage />} />
