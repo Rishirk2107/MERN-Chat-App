@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
 import '../assets/styles.css';
 
@@ -83,7 +83,7 @@ const LoginPage: React.FC = () => {
           {error && <div className="text-sm text-red-500 text-center mt-2">{error}</div>}
         </form>
         <div className="mt-6 text-center text-sm text-gray-500">
-          Don't have an account? <a href="/signup" className="text-blue-600 hover:underline">Sign up</a>
+          Don't have an account? <Link to="/signup" className="text-blue-600 hover:underline">Sign up</Link>
         </div>
       </div>
     </div>
